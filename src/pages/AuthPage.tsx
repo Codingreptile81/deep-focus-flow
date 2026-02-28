@@ -30,8 +30,6 @@ const AuthPage: React.FC = () => {
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else if (!isLogin) {
-      toast({ title: 'Check your email', description: 'We sent you a confirmation link. Please verify your email before signing in.' });
     }
   };
 
