@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, UserPlus, Loader2 } from 'lucide-react';
+import { useTheme } from '@/hooks/useTheme';
+import { LogIn, UserPlus, Loader2, Sun, Moon } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +36,16 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 h-9 w-9"
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </Button>
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center mx-auto">
