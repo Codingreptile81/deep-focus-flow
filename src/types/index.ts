@@ -16,8 +16,29 @@ export interface Habit {
   metric_type: MetricType;
   target_value?: number;
   color: string;
+  icon: string;
   created_at: string;
 }
+
+export const HABIT_ICONS = [
+  'book-open', 'dumbbell', 'heart', 'brain', 'coffee', 'droplets',
+  'sun', 'moon', 'apple', 'pencil', 'music', 'code',
+  'target', 'zap', 'flame', 'leaf', 'eye', 'smile',
+  'run', 'bed', 'glass-water', 'salad', 'pill', 'bike',
+] as const;
+
+export const HABIT_COLOR_OPTIONS = [
+  { name: 'Blue', value: 'habit-blue', hex: 'hsl(210, 80%, 55%)' },
+  { name: 'Green', value: 'habit-green', hex: 'hsl(160, 60%, 45%)' },
+  { name: 'Orange', value: 'habit-orange', hex: 'hsl(30, 90%, 56%)' },
+  { name: 'Pink', value: 'habit-pink', hex: 'hsl(340, 65%, 55%)' },
+  { name: 'Purple', value: 'habit-purple', hex: 'hsl(270, 60%, 55%)' },
+  { name: 'Teal', value: 'habit-teal', hex: 'hsl(180, 55%, 45%)' },
+  { name: 'Red', value: 'habit-red', hex: 'hsl(0, 72%, 51%)' },
+  { name: 'Amber', value: 'habit-amber', hex: 'hsl(45, 93%, 47%)' },
+  { name: 'Indigo', value: 'habit-indigo', hex: 'hsl(245, 58%, 51%)' },
+  { name: 'Emerald', value: 'habit-emerald', hex: 'hsl(152, 69%, 31%)' },
+] as const;
 
 export interface SessionLog {
   id: string;
