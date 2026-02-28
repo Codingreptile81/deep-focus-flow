@@ -8,6 +8,7 @@ interface AppState {
   habitLogs: HabitLog[];
   addSubject: (subject: Subject) => void;
   addHabit: (habit: Habit) => void;
+  updateHabit: (habit: Habit) => void;
   addSessionLog: (log: SessionLog) => void;
   addHabitLog: (log: HabitLog) => void;
   deleteSubject: (id: string) => void;
@@ -38,13 +39,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addSubject = useCallback((s: Subject) => setSubjects(prev => [...prev, s]), []);
   const addHabit = useCallback((h: Habit) => setHabits(prev => [...prev, h]), []);
+  const updateHabit = useCallback((h: Habit) => setHabits(prev => prev.map(existing => existing.id === h.id ? h : existing)), []);
   const addSessionLog = useCallback((l: SessionLog) => setSessionLogs(prev => [...prev, l]), []);
   const addHabitLog = useCallback((l: HabitLog) => setHabitLogs(prev => [...prev, l]), []);
   const deleteSubject = useCallback((id: string) => setSubjects(prev => prev.filter(s => s.id !== id)), []);
   const deleteHabit = useCallback((id: string) => setHabits(prev => prev.filter(h => h.id !== id)), []);
 
   return (
-    <AppContext.Provider value={{ subjects, habits, sessionLogs, habitLogs, addSubject, addHabit, addSessionLog, addHabitLog, deleteSubject, deleteHabit }}>
+    <AppContext.Provider value={{ subjects, habits, sessionLogs, habitLogs, addSubject, addHabit, updateHabit, addSessionLog, addHabitLog, deleteSubject, deleteHabit }}>
       {children}
     </AppContext.Provider>
   );

@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Flame, Check, Hash, Clock, Pencil, CalendarDays } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Flame, Check, Hash, Clock, Pencil, CalendarDays, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import HabitCalendar from './HabitCalendar';
 
 const HabitTracker: React.FC = () => {
-  const { habits, habitLogs, addHabit, addHabitLog } = useAppState();
+  const { habits, habitLogs, addHabit, updateHabit, addHabitLog, deleteHabit } = useAppState();
   const [showAdd, setShowAdd] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [newName, setNewName] = useState('');
@@ -24,12 +25,21 @@ const HabitTracker: React.FC = () => {
   const [entryHabitId, setEntryHabitId] = useState<string | null>(null);
   const [entryValue, setEntryValue] = useState('');
   const [entryNote, setEntryNote] = useState('');
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
   const getColorHex = (colorValue: string) => {
     const found = HABIT_COLOR_OPTIONS.find(c => c.value === colorValue);
     return found?.hex || 'hsl(210, 80%, 55%)';
+  };
+
+  const resetForm = () => {
+    setNewName('');
+    setNewTarget('');
+    setNewColor(HABIT_COLOR_OPTIONS[0].value);
+    setNewIcon('book-open');
+    setNewMetric('binary');
   };
 
   const handleAddHabit = () => {
@@ -43,11 +53,31 @@ const HabitTracker: React.FC = () => {
       icon: newIcon,
       created_at: new Date().toISOString(),
     });
-    setNewName('');
-    setNewTarget('');
-    setNewColor(HABIT_COLOR_OPTIONS[0].value);
-    setNewIcon('book-open');
+    resetForm();
     setShowAdd(false);
+  };
+
+  const handleEditHabit = () => {
+    if (!editingHabit || !newName.trim()) return;
+    updateHabit({
+      ...editingHabit,
+      name: newName.trim(),
+      metric_type: newMetric,
+      target_value: newTarget ? parseFloat(newTarget) : undefined,
+      color: newColor,
+      icon: newIcon,
+    });
+    resetForm();
+    setEditingHabit(null);
+  };
+
+  const startEditing = (habit: Habit) => {
+    setNewName(habit.name);
+    setNewMetric(habit.metric_type);
+    setNewTarget(habit.target_value?.toString() || '');
+    setNewColor(habit.color);
+    setNewIcon(habit.icon || 'book-open');
+    setEditingHabit(habit);
   };
 
   const handleLogEntry = () => {
@@ -76,107 +106,102 @@ const HabitTracker: React.FC = () => {
     return <Clock className="h-3.5 w-3.5" />;
   };
 
+  const habitFormContent = (isEdit: boolean) => (
+    <div className="space-y-4">
+      <Input placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} />
+      <Select value={newMetric} onValueChange={(v: 'binary' | 'count' | 'minutes') => setNewMetric(v)}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="binary">Binary (Done/Not done)</SelectItem>
+          <SelectItem value="count">Count</SelectItem>
+          <SelectItem value="minutes">Minutes</SelectItem>
+        </SelectContent>
+      </Select>
+      {newMetric !== 'binary' && (
+        <Input type="number" placeholder="Daily target (optional)" value={newTarget} onChange={e => setNewTarget(e.target.value)} />
+      )}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Color</label>
+        <div className="flex flex-wrap gap-2">
+          {HABIT_COLOR_OPTIONS.map(c => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => setNewColor(c.value)}
+              className={`h-8 w-8 rounded-full transition-all ${newColor === c.value ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'}`}
+              style={{ backgroundColor: c.hex, boxShadow: newColor === c.value ? `0 0 0 2px ${c.hex}` : undefined }}
+              title={c.name}
+            />
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="text-sm font-medium mb-2 block">Icon</label>
+        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1">
+          {allHabitIconNames.map(iconName => {
+            const Icon = getHabitIcon(iconName);
+            return (
+              <button
+                key={iconName}
+                type="button"
+                onClick={() => setNewIcon(iconName)}
+                className={`h-9 w-9 rounded-lg flex items-center justify-center transition-all ${
+                  newIcon === iconName ? 'bg-accent ring-1 ring-primary' : 'hover:bg-muted'
+                }`}
+                title={iconName}
+              >
+                <Icon className="h-4 w-4" style={{ color: newIcon === iconName ? getColorHex(newColor) : 'hsl(var(--muted-foreground))' }} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+        {(() => {
+          const PreviewIcon = getHabitIcon(newIcon);
+          return (
+            <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getColorHex(newColor) + '22' }}>
+              <PreviewIcon className="h-5 w-5" style={{ color: getColorHex(newColor) }} />
+            </div>
+          );
+        })()}
+        <span className="text-sm font-medium">{newName || 'Habit name'}</span>
+      </div>
+      <Button onClick={isEdit ? handleEditHabit : handleAddHabit} className="w-full">
+        {isEdit ? 'Save Changes' : 'Create Habit'}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Habits</h2>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setShowCalendar(!showCalendar)}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowCalendar(!showCalendar)}>
             <CalendarDays className="h-4 w-4" />
             <span className="hidden sm:inline">Calendar</span>
           </Button>
-          <Dialog open={showAdd} onOpenChange={setShowAdd}>
+          <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Habit</Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle>Create Habit</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder="Habit name" value={newName} onChange={e => setNewName(e.target.value)} />
-
-                <Select value={newMetric} onValueChange={(v: 'binary' | 'count' | 'minutes') => setNewMetric(v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="binary">Binary (Done/Not done)</SelectItem>
-                    <SelectItem value="count">Count</SelectItem>
-                    <SelectItem value="minutes">Minutes</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {newMetric !== 'binary' && (
-                  <Input type="number" placeholder="Daily target (optional)" value={newTarget} onChange={e => setNewTarget(e.target.value)} />
-                )}
-
-                {/* Color Picker */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Color</label>
-                  <div className="flex flex-wrap gap-2">
-                    {HABIT_COLOR_OPTIONS.map(c => (
-                      <button
-                        key={c.value}
-                        type="button"
-                        onClick={() => setNewColor(c.value)}
-                        className={`h-8 w-8 rounded-full transition-all ${newColor === c.value ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'}`}
-                        style={{ backgroundColor: c.hex, boxShadow: newColor === c.value ? `0 0 0 2px ${c.hex}` : undefined }}
-                        title={c.name}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Icon Picker */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Icon</label>
-                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1">
-                    {allHabitIconNames.map(iconName => {
-                      const Icon = getHabitIcon(iconName);
-                      return (
-                        <button
-                          key={iconName}
-                          type="button"
-                          onClick={() => setNewIcon(iconName)}
-                          className={`h-9 w-9 rounded-lg flex items-center justify-center transition-all ${
-                            newIcon === iconName
-                              ? 'bg-accent ring-1 ring-primary'
-                              : 'hover:bg-muted'
-                          }`}
-                          title={iconName}
-                        >
-                          <Icon
-                            className="h-4.5 w-4.5"
-                            style={{ color: newIcon === iconName ? getColorHex(newColor) : 'hsl(var(--muted-foreground))' }}
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  {(() => {
-                    const PreviewIcon = getHabitIcon(newIcon);
-                    return (
-                      <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: getColorHex(newColor) + '22' }}>
-                        <PreviewIcon className="h-5 w-5" style={{ color: getColorHex(newColor) }} />
-                      </div>
-                    );
-                  })()}
-                  <span className="text-sm font-medium">{newName || 'Habit name'}</span>
-                </div>
-
-                <Button onClick={handleAddHabit} className="w-full">Create Habit</Button>
-              </div>
+              {habitFormContent(false)}
             </DialogContent>
           </Dialog>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingHabit} onOpenChange={(open) => { if (!open) { setEditingHabit(null); resetForm(); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Edit Habit</DialogTitle></DialogHeader>
+          {habitFormContent(true)}
+        </DialogContent>
+      </Dialog>
 
       {/* Calendar View */}
       {showCalendar && <HabitCalendar habits={habits} habitLogs={habitLogs} />}
@@ -199,11 +224,8 @@ const HabitTracker: React.FC = () => {
               <Card key={habit.id} className={`p-4 transition-all ${completed ? 'ring-1 ring-success/30' : ''}`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: getColorHex(habit.color) + '22' }}
-                    >
-                      <HabitIcon className="h-4.5 w-4.5" style={{ color: getColorHex(habit.color) }} />
+                    <div className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: getColorHex(habit.color) + '22' }}>
+                      <HabitIcon className="h-4 w-4" style={{ color: getColorHex(habit.color) }} />
                     </div>
                     <div>
                       <h4 className="font-medium text-sm">{habit.name}</h4>
@@ -213,6 +235,21 @@ const HabitTracker: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => startEditing(habit)} className="gap-2">
+                        <Edit className="h-3.5 w-3.5" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => deleteHabit(habit.id)} className="gap-2 text-destructive focus:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="flex items-center gap-4 mb-3">
@@ -243,12 +280,7 @@ const HabitTracker: React.FC = () => {
                       <DialogHeader><DialogTitle>Log: {habit.name}</DialogTitle></DialogHeader>
                       <div className="space-y-4">
                         {habit.metric_type !== 'binary' && (
-                          <Input
-                            type="number"
-                            placeholder={habit.metric_type === 'count' ? 'Count' : 'Minutes'}
-                            value={entryValue}
-                            onChange={e => setEntryValue(e.target.value)}
-                          />
+                          <Input type="number" placeholder={habit.metric_type === 'count' ? 'Count' : 'Minutes'} value={entryValue} onChange={e => setEntryValue(e.target.value)} />
                         )}
                         <Input placeholder="Note (optional)" value={entryNote} onChange={e => setEntryNote(e.target.value)} />
                         <Button onClick={handleLogEntry} className="w-full">Save Entry</Button>

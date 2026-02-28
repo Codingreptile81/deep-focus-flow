@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, BarChart3, Sun, Moon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useTheme } from '@/hooks/useTheme';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -11,6 +13,7 @@ const navItems = [
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,26 +25,37 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
             <span className="font-semibold text-lg tracking-tight">DeepTrack</span>
           </div>
-          <nav className="flex items-center gap-1">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.to;
-              return (
-                <RouterNavLink
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
-                </RouterNavLink>
-              );
-            })}
-          </nav>
+          <div className="flex items-center gap-1">
+            <nav className="flex items-center gap-1">
+              {navItems.map(item => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.to;
+                return (
+                  <RouterNavLink
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </RouterNavLink>
+                );
+              })}
+            </nav>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="ml-1 h-9 w-9"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </header>
       <main className="container py-6">{children}</main>
