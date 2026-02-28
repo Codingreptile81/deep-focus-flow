@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, BarChart3, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, BarChart3, Sun, Moon, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -14,6 +15,7 @@ const navItems = [
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { signOut, user } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,6 +56,15 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              className="h-9 w-9"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
