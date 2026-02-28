@@ -1,28 +1,49 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/hooks/useTheme';
 import { LogIn, UserPlus, Loader2, Sun, Moon } from 'lucide-react';
+
+type View = 'login' | 'signup' | 'forgot';
 
 const AuthPage: React.FC = () => {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
-  const [isLogin, setIsLogin] = useState(true);
+  const [view, setView] = useState<View>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!email) return;
     setLoading(true);
 
-    const { error } = isLogin
+    if (view === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setLoading(false);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Email sent', description: 'Check your inbox for a password reset link.' });
+        setView('login');
+      }
+      return;
+    }
+
+    if (!password) { setLoading(false); return; }
+
+    const { error } = view === 'login'
       ? await signIn(email, password)
       : await signUp(email, password);
 
@@ -51,7 +72,9 @@ const AuthPage: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold tracking-tight">DeepTrack</h1>
           <p className="text-sm text-muted-foreground">
-            {isLogin ? 'Welcome back! Sign in to continue.' : 'Create an account to get started.'}
+            {view === 'login' && 'Welcome back! Sign in to continue.'}
+            {view === 'signup' && 'Create an account to get started.'}
+            {view === 'forgot' && 'Enter your email to reset your password.'}
           </p>
         </div>
 
@@ -68,39 +91,72 @@ const AuthPage: React.FC = () => {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {view !== 'forgot' && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+            {view === 'login' && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="keep-signed-in"
+                    checked={keepSignedIn}
+                    onCheckedChange={(checked) => setKeepSignedIn(checked === true)}
+                  />
+                  <Label htmlFor="keep-signed-in" className="text-sm font-normal cursor-pointer">
+                    Keep me signed in
+                  </Label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setView('forgot')}
+                  className="text-sm text-primary font-medium hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
             <Button type="submit" className="w-full gap-2" disabled={loading}>
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isLogin ? (
+              ) : view === 'login' ? (
                 <LogIn className="h-4 w-4" />
-              ) : (
+              ) : view === 'signup' ? (
                 <UserPlus className="h-4 w-4" />
-              )}
-              {isLogin ? 'Sign In' : 'Sign Up'}
+              ) : null}
+              {view === 'login' && 'Sign In'}
+              {view === 'signup' && 'Sign Up'}
+              {view === 'forgot' && 'Send Reset Link'}
             </Button>
           </form>
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          {isLogin ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-primary font-medium hover:underline"
-          >
-            {isLogin ? 'Sign Up' : 'Sign In'}
-          </button>
+          {view === 'login' && (
+            <>Don't have an account?{' '}
+              <button onClick={() => setView('signup')} className="text-primary font-medium hover:underline">Sign Up</button>
+            </>
+          )}
+          {view === 'signup' && (
+            <>Already have an account?{' '}
+              <button onClick={() => setView('login')} className="text-primary font-medium hover:underline">Sign In</button>
+            </>
+          )}
+          {view === 'forgot' && (
+            <>Remember your password?{' '}
+              <button onClick={() => setView('login')} className="text-primary font-medium hover:underline">Sign In</button>
+            </>
+          )}
         </p>
       </div>
     </div>
