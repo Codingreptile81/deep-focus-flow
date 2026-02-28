@@ -1,13 +1,30 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAppState } from '@/contexts/AppContext';
-import { SUBJECT_COLOR_MAP } from '@/types';
-import { getTodayStudyMinutes, formatMinutes, getHabitStreak, getWeeklyStudyData } from '@/lib/analytics';
+import { SUBJECT_COLOR_MAP, HABIT_COLOR_OPTIONS } from '@/types';
+import { getTodayStudyMinutes, formatMinutes, getHabitStreak, getWeeklyStudyData, getWeeklyHabitData } from '@/lib/analytics';
+import { getHabitIcon } from '@/lib/habit-icons';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { Timer, CheckSquare, Flame, Clock, ArrowRight, Zap } from 'lucide-react';
-import { format } from 'date-fns';
+import { Timer, CheckSquare, Flame, Clock, ArrowRight, Zap, Trophy, Award, Star, Shield, TrendingUp } from 'lucide-react';
+import { format, subDays } from 'date-fns';
+
+// Badge definitions
+const STREAK_BADGES = [
+  { threshold: 3, label: 'Starter', icon: Star, color: 'hsl(30, 90%, 56%)' },
+  { threshold: 7, label: 'On Fire', icon: Flame, color: 'hsl(0, 72%, 51%)' },
+  { threshold: 14, label: 'Committed', icon: Shield, color: 'hsl(210, 80%, 55%)' },
+  { threshold: 30, label: 'Champion', icon: Trophy, color: 'hsl(270, 60%, 55%)' },
+  { threshold: 60, label: 'Legend', icon: Award, color: 'hsl(45, 93%, 47%)' },
+];
+
+const getStreakBadge = (streak: number) => {
+  for (let i = STREAK_BADGES.length - 1; i >= 0; i--) {
+    if (streak >= STREAK_BADGES[i].threshold) return STREAK_BADGES[i];
+  }
+  return null;
+};
 
 const DashboardPage: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs } = useAppState();
@@ -22,6 +39,32 @@ const DashboardPage: React.FC = () => {
     : 0;
 
   const weekTotal = weeklyData.reduce((s, d) => s + d.minutes, 0);
+
+  const getColorHex = (colorValue: string) => {
+    const found = HABIT_COLOR_OPTIONS.find(c => c.value === colorValue);
+    return found?.hex || 'hsl(210, 80%, 55%)';
+  };
+
+  // Weekly consistency: how many days in last 7 had ALL habits completed
+  const weeklyConsistency = useMemo(() => {
+    if (habits.length === 0) return { score: 0, daysComplete: 0, totalDays: 7 };
+    let daysComplete = 0;
+    for (let i = 0; i < 7; i++) {
+      const dateStr = format(subDays(new Date(), i), 'yyyy-MM-dd');
+      const allDone = habits.every(h => habitLogs.some(l => l.habit_id === h.id && l.date === dateStr));
+      if (allDone) daysComplete++;
+    }
+    return { score: Math.round((daysComplete / 7) * 100), daysComplete, totalDays: 7 };
+  }, [habits, habitLogs]);
+
+  // Habit streaks with badges
+  const habitStreaks = useMemo(() => {
+    return habits.map(h => ({
+      habit: h,
+      streak: getHabitStreak(habitLogs, h.id),
+      badge: getStreakBadge(getHabitStreak(habitLogs, h.id)),
+    })).sort((a, b) => b.streak - a.streak);
+  }, [habits, habitLogs]);
 
   return (
     <div className="space-y-6">
@@ -63,13 +106,62 @@ const DashboardPage: React.FC = () => {
 
         <Card className="p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground font-medium">This Week</span>
-            <Zap className="h-4 w-4 text-accent-foreground" />
+            <span className="text-xs text-muted-foreground font-medium">Weekly Consistency</span>
+            <TrendingUp className="h-4 w-4 text-accent-foreground" />
           </div>
-          <div className="stat-value animate-count-up">{formatMinutes(weekTotal)}</div>
-          <div className="text-xs text-muted-foreground mt-1">total study</div>
+          <div className="stat-value animate-count-up">{weeklyConsistency.score}%</div>
+          <div className="text-xs text-muted-foreground mt-1">{weeklyConsistency.daysComplete}/7 perfect days</div>
         </Card>
       </div>
+
+      {/* Streak Badges */}
+      {habitStreaks.length > 0 && habitStreaks.some(s => s.badge) && (
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-warning" /> Streak Badges
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {habitStreaks.filter(s => s.badge).map(({ habit, streak, badge }) => {
+              const BadgeIcon = badge!.icon;
+              const HabitIcon = getHabitIcon(habit.icon);
+              return (
+                <div key={habit.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
+                  <div className="relative">
+                    <div className="h-11 w-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: badge!.color + '18' }}>
+                      <BadgeIcon className="h-5 w-5" style={{ color: badge!.color }} />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center bg-card border border-border">
+                      <HabitIcon className="h-3 w-3" style={{ color: getColorHex(habit.color) }} />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold" style={{ color: badge!.color }}>{badge!.label}</div>
+                    <div className="text-xs text-muted-foreground truncate">{habit.name}</div>
+                    <div className="text-xs font-mono text-muted-foreground">{streak} day streak</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* All badge levels */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="text-xs text-muted-foreground mb-2">Badge levels</div>
+            <div className="flex flex-wrap gap-3">
+              {STREAK_BADGES.map(b => {
+                const Icon = b.icon;
+                const earned = habitStreaks.some(s => s.streak >= b.threshold);
+                return (
+                  <div key={b.label} className={`flex items-center gap-1.5 text-xs ${earned ? '' : 'opacity-40'}`}>
+                    <Icon className="h-3.5 w-3.5" style={{ color: b.color }} />
+                    <span>{b.label} ({b.threshold}d)</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -109,15 +201,14 @@ const DashboardPage: React.FC = () => {
 
       {/* Weekly Chart */}
       <Card className="p-6">
-        <h3 className="font-semibold mb-4">Weekly Overview</h3>
+        <h3 className="font-semibold mb-1">Weekly Overview</h3>
+        <p className="text-xs text-muted-foreground mb-4">{formatMinutes(weekTotal)} total this week</p>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={weeklyData}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
             <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-            />
+            <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
             <Bar dataKey="minutes" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
