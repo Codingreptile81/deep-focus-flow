@@ -1,0 +1,55 @@
+export type SubjectCategory = 'study' | 'skill';
+export type MetricType = 'binary' | 'count' | 'minutes';
+
+export interface Subject {
+  id: string;
+  name: string;
+  category: SubjectCategory;
+  goal_hours?: number;
+  color: string;
+  created_at: string;
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  metric_type: MetricType;
+  target_value?: number;
+  color: string;
+  created_at: string;
+}
+
+export interface SessionLog {
+  id: string;
+  subject_id: string;
+  duration_minutes: number;
+  started_at: string;
+  completed_at: string;
+  date: string;
+}
+
+export interface HabitLog {
+  id: string;
+  habit_id: string;
+  value: number;
+  date: string;
+  note?: string;
+}
+
+export const SUBJECT_COLORS = [
+  'subject-blue',
+  'subject-green',
+  'subject-orange',
+  'subject-pink',
+  'subject-purple',
+  'subject-teal',
+] as const;
+
+export const SUBJECT_COLOR_MAP: Record<string, string> = {
+  'subject-blue': 'hsl(210, 80%, 55%)',
+  'subject-green': 'hsl(160, 60%, 45%)',
+  'subject-orange': 'hsl(30, 90%, 56%)',
+  'subject-pink': 'hsl(340, 65%, 55%)',
+  'subject-purple': 'hsl(270, 60%, 55%)',
+  'subject-teal': 'hsl(180, 55%, 45%)',
+};
