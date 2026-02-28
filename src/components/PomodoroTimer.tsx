@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppState } from '@/contexts/AppContext';
-import { Subject, SessionLog, SUBJECT_COLORS, SUBJECT_COLOR_MAP } from '@/types';
+import { SUBJECT_COLORS, SUBJECT_COLOR_MAP } from '@/types';
 import { getSubjectTotalMinutes, getSubjectTodayMinutes, formatMinutes, getSubjectLevel } from '@/lib/analytics';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,15 +40,13 @@ const PomodoroTimer: React.FC = () => {
 
   const completeSession = useCallback(() => {
     if (!selectedSubjectId || !startedAt) return;
-    const log: SessionLog = {
-      id: crypto.randomUUID(),
+    addSessionLog({
       subject_id: selectedSubjectId,
       duration_minutes: durationMinutes,
       started_at: startedAt,
       completed_at: new Date().toISOString(),
       date: format(new Date(), 'yyyy-MM-dd'),
-    };
-    addSessionLog(log);
+    });
     setStartedAt(null);
   }, [selectedSubjectId, startedAt, durationMinutes, addSessionLog]);
 
@@ -79,11 +77,9 @@ const PomodoroTimer: React.FC = () => {
     if (!newSubjectName.trim()) return;
     const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
     addSubject({
-      id: crypto.randomUUID(),
       name: newSubjectName.trim(),
       category: newSubjectCategory,
       color,
-      created_at: new Date().toISOString(),
     });
     setNewSubjectName('');
     setShowAddSubject(false);

@@ -45,13 +45,11 @@ const HabitTracker: React.FC = () => {
   const handleAddHabit = () => {
     if (!newName.trim()) return;
     addHabit({
-      id: crypto.randomUUID(),
       name: newName.trim(),
       metric_type: newMetric,
       target_value: newTarget ? parseFloat(newTarget) : undefined,
       color: newColor,
       icon: newIcon,
-      created_at: new Date().toISOString(),
     });
     resetForm();
     setShowAdd(false);
@@ -86,7 +84,6 @@ const HabitTracker: React.FC = () => {
     if (!habit) return;
     const value = habit.metric_type === 'binary' ? 1 : parseFloat(entryValue) || 0;
     addHabitLog({
-      id: crypto.randomUUID(),
       habit_id: entryHabitId,
       value,
       date: todayStr,
