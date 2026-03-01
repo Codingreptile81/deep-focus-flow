@@ -5,9 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon } from 'lucide-react';
 import { formatMinutes } from '@/lib/analytics';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const PRIORITY_COLORS: Record<string, { border: string; badge: string }> = {
   high: { border: 'border-l-4 border-l-[hsl(0,72%,51%)]', badge: 'bg-[hsl(0,72%,51%)] text-white' },
@@ -34,7 +37,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
   const [editSubjectId, setEditSubjectId] = useState(task.subject_id || 'none');
   const [editEstimate, setEditEstimate] = useState(task.estimate_minutes?.toString() || '');
   const [editPriority, setEditPriority] = useState(task.priority);
-
+  const [editDeadline, setEditDeadline] = useState<Date | undefined>(task.deadline ? parseISO(task.deadline) : undefined);
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
   const canMoveRight = currentIdx < STATUS_ORDER.length - 1;
@@ -57,6 +60,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
     setEditSubjectId(task.subject_id || 'none');
     setEditEstimate(task.estimate_minutes?.toString() || '');
     setEditPriority(task.priority);
+    setEditDeadline(task.deadline ? parseISO(task.deadline) : undefined);
   };
 
   const saveEdit = () => {
@@ -68,6 +72,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
       subject_id: editSubjectId === 'none' ? undefined : editSubjectId,
       estimate_minutes: editEstimate ? parseInt(editEstimate) : undefined,
       priority: editPriority,
+      deadline: editDeadline ? format(editDeadline, 'yyyy-MM-dd') : undefined,
     });
     setEditing(false);
   };
@@ -105,6 +110,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
             </Select>
           </div>
           <Input type="number" value={editEstimate} onChange={e => setEditEstimate(e.target.value)} placeholder="Estimate (min)" className="h-8 text-sm" min={1} />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-8 text-xs", !editDeadline && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-3 w-3" />
+                {editDeadline ? format(editDeadline, 'PPP') : <span>Deadline (optional)</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={editDeadline} onSelect={setEditDeadline} initialFocus className={cn("p-3 pointer-events-auto")} />
+            </PopoverContent>
+          </Popover>
+          {editDeadline && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setEditDeadline(undefined)}>Clear deadline</Button>
+          )}
           <div className="flex gap-2 pt-1">
             <Button size="sm" className="h-7 text-xs gap-1 flex-1" onClick={saveEdit}><Check className="h-3 w-3" /> Save</Button>
             <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1" onClick={cancelEdit}><X className="h-3 w-3" /> Cancel</Button>
