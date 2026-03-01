@@ -120,7 +120,3 @@ npm run dev
 All tables use Row Level Security — users can only access their own data.
 
 ---
-
-## License
-
-Private project built with [Lovable](https://lovable.dev).
