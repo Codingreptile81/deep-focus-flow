@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, BarChart3, Sun, Moon, LogOut } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, BarChart3, ClipboardList, Sun, Moon, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/timer', label: 'Timer', icon: Timer },
   { to: '/habits', label: 'Habits', icon: CheckSquare },
+  { to: '/planner', label: 'Planner', icon: ClipboardList },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 

@@ -183,6 +183,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_time: string | null
+          id: string
+          position: number
+          priority: string
+          scheduled_date: string | null
+          start_time: string | null
+          status: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          position?: number
+          priority?: string
+          scheduled_date?: string | null
+          start_time?: string | null
+          status?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_time?: string | null
+          id?: string
+          position?: number
+          priority?: string
+          scheduled_date?: string | null
+          start_time?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
