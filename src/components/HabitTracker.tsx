@@ -9,14 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Flame, Check, Hash, Clock, Pencil, CalendarDays, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { Plus, Flame, Check, Hash, Clock, Pencil, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { format } from 'date-fns';
-import HabitCalendar from './HabitCalendar';
+
 
 const HabitTracker: React.FC = () => {
   const { habits, habitLogs, addHabit, updateHabit, addHabitLog, deleteHabit } = useAppState();
   const [showAdd, setShowAdd] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
+  
   const [newName, setNewName] = useState('');
   const [newMetric, setNewMetric] = useState<'binary' | 'count' | 'minutes'>('binary');
   const [newTarget, setNewTarget] = useState('');
@@ -176,10 +176,6 @@ const HabitTracker: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Habits</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowCalendar(!showCalendar)}>
-            <CalendarDays className="h-4 w-4" />
-            <span className="hidden sm:inline">Calendar</span>
-          </Button>
           <Dialog open={showAdd} onOpenChange={(open) => { setShowAdd(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Habit</Button>
@@ -200,8 +196,6 @@ const HabitTracker: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Calendar View */}
-      {showCalendar && <HabitCalendar habits={habits} habitLogs={habitLogs} />}
 
       {/* Habit List */}
       {habits.length === 0 ? (

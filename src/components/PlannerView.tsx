@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task, TaskPriority, TaskRecurrence, Subject, SUBJECT_COLOR_MAP } from '@/types';
+import { Task, TaskPriority, TaskRecurrence, Subject, Habit, HabitLog, SUBJECT_COLOR_MAP } from '@/types';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,16 +10,19 @@ import { Plus, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import TaskCard from '@/components/TaskCard';
+import ActivityCalendar from '@/components/ActivityCalendar';
 
 interface PlannerViewProps {
   tasks: Task[];
   subjects: Subject[];
+  habits: Habit[];
+  habitLogs: HabitLog[];
   onAddTask: (task: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
 
-const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, onUpdateTask, onDeleteTask }) => {
+const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habitLogs, onAddTask, onUpdateTask, onDeleteTask }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,6 +33,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
   const [subjectId, setSubjectId] = useState<string>('none');
   const [estimateMinutes, setEstimateMinutes] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
+
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks
     .filter(t => t.scheduled_date === dateStr)
@@ -61,12 +65,21 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-      <div className="space-y-4">
-        <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} className="rounded-md border" />
+    <div className="space-y-6">
+      {/* Gamified Activity Calendar + Stats */}
+      <ActivityCalendar
+        tasks={tasks}
+        habitLogs={habitLogs}
+        habits={habits}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+
+      {/* Add Task + Day Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Add Task</CardTitle>
+            <CardTitle className="text-sm">Add Task — {format(selectedDate, 'MMM d, yyyy')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Input placeholder="Task title" value={title} onChange={e => setTitle(e.target.value)} />
@@ -122,15 +135,15 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
             </Button>
           </CardContent>
         </Card>
-      </div>
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold">Tasks for {format(selectedDate, 'MMM d, yyyy')}</h3>
-        {dayTasks.length === 0 && (
-          <p className="text-sm text-muted-foreground py-8 text-center">No tasks scheduled for this day</p>
-        )}
-        {dayTasks.map(task => (
-          <TaskCard key={task.id} task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} showMoveButtons={false} />
-        ))}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold">Tasks for {format(selectedDate, 'MMM d, yyyy')}</h3>
+          {dayTasks.length === 0 && (
+            <p className="text-sm text-muted-foreground py-8 text-center">No tasks scheduled for this day</p>
+          )}
+          {dayTasks.map(task => (
+            <TaskCard key={task.id} task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} showMoveButtons={false} />
+          ))}
+        </div>
       </div>
     </div>
   );
