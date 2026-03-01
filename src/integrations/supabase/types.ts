@@ -121,6 +121,7 @@ export type Database = {
           id: string
           started_at: string
           subject_id: string
+          task_id: string | null
           user_id: string
         }
         Insert: {
@@ -131,6 +132,7 @@ export type Database = {
           id?: string
           started_at: string
           subject_id: string
+          task_id?: string | null
           user_id: string
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           id?: string
           started_at?: string
           subject_id?: string
+          task_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -149,6 +152,13 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -185,9 +195,11 @@ export type Database = {
       }
       tasks: {
         Row: {
+          actual_minutes: number
           created_at: string
           description: string | null
           end_time: string | null
+          estimate_minutes: number | null
           id: string
           position: number
           priority: string
@@ -195,13 +207,16 @@ export type Database = {
           scheduled_date: string | null
           start_time: string | null
           status: string
+          subject_id: string | null
           title: string
           user_id: string
         }
         Insert: {
+          actual_minutes?: number
           created_at?: string
           description?: string | null
           end_time?: string | null
+          estimate_minutes?: number | null
           id?: string
           position?: number
           priority?: string
@@ -209,13 +224,16 @@ export type Database = {
           scheduled_date?: string | null
           start_time?: string | null
           status?: string
+          subject_id?: string | null
           title: string
           user_id: string
         }
         Update: {
+          actual_minutes?: number
           created_at?: string
           description?: string | null
           end_time?: string | null
+          estimate_minutes?: number | null
           id?: string
           position?: number
           priority?: string
@@ -223,10 +241,19 @@ export type Database = {
           scheduled_date?: string | null
           start_time?: string | null
           status?: string
+          subject_id?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

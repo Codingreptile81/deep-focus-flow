@@ -1,48 +1,35 @@
 import React from 'react';
-import { Task, TaskStatus } from '@/types';
+import { Task, TaskStatus, Subject, SUBJECT_COLOR_MAP } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer } from 'lucide-react';
+import { formatMinutes } from '@/lib/analytics';
 
 const PRIORITY_COLORS: Record<string, { border: string; bg: string; badge: string }> = {
-  high: {
-    border: 'border-l-4 border-l-[hsl(0,72%,51%)]',
-    bg: '',
-    badge: 'bg-[hsl(0,72%,51%)] text-white',
-  },
-  medium: {
-    border: 'border-l-4 border-l-[hsl(45,93%,47%)]',
-    bg: '',
-    badge: 'bg-[hsl(45,93%,47%)] text-white',
-  },
-  low: {
-    border: 'border-l-4 border-l-[hsl(160,60%,45%)]',
-    bg: '',
-    badge: 'bg-[hsl(160,60%,45%)] text-white',
-  },
+  high: { border: 'border-l-4 border-l-[hsl(0,72%,51%)]', bg: '', badge: 'bg-[hsl(0,72%,51%)] text-white' },
+  medium: { border: 'border-l-4 border-l-[hsl(45,93%,47%)]', bg: '', badge: 'bg-[hsl(45,93%,47%)] text-white' },
+  low: { border: 'border-l-4 border-l-[hsl(160,60%,45%)]', bg: '', badge: 'bg-[hsl(160,60%,45%)] text-white' },
 };
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done'];
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  done: 'Done',
-};
+const STATUS_LABELS: Record<TaskStatus, string> = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
 
 interface TaskCardProps {
   task: Task;
+  subjects?: Subject[];
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   showMoveButtons?: boolean;
   isDragging?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, showMoveButtons = true, isDragging = false }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, onDeleteTask, showMoveButtons = true, isDragging = false }) => {
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
   const canMoveRight = currentIdx < STATUS_ORDER.length - 1;
   const colors = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
+  const linkedSubject = task.subject_id ? subjects.find(s => s.id === task.subject_id) : null;
 
   const moveStatus = (direction: -1 | 1) => {
     const newStatus = STATUS_ORDER[currentIdx + direction];
@@ -64,6 +51,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, s
           <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
         )}
         <div className="flex items-center gap-2 flex-wrap">
+          {linkedSubject && (
+            <div className="flex items-center gap-1 text-xs">
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[linkedSubject.color] }} />
+              <span className="text-muted-foreground">{linkedSubject.name}</span>
+            </div>
+          )}
           {(task.start_time || task.end_time) && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
@@ -74,6 +67,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, s
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Repeat className="h-3 w-3" />
               <span>{task.recurrence}</span>
+            </div>
+          )}
+          {(task.estimate_minutes || task.actual_minutes > 0) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Timer className="h-3 w-3" />
+              <span>{formatMinutes(task.actual_minutes)}{task.estimate_minutes ? ` / ${formatMinutes(task.estimate_minutes)}` : ''}</span>
             </div>
           )}
         </div>

@@ -15,6 +15,9 @@ export interface Task {
   priority: TaskPriority;
   position: number;
   recurrence?: TaskRecurrence;
+  subject_id?: string;
+  estimate_minutes?: number;
+  actual_minutes: number;
   created_at: string;
 }
 export type MetricType = 'binary' | 'count' | 'minutes';
@@ -61,6 +64,7 @@ export const HABIT_COLOR_OPTIONS = [
 export interface SessionLog {
   id: string;
   subject_id: string;
+  task_id?: string;
   duration_minutes: number;
   started_at: string;
   completed_at: string;
