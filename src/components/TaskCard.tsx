@@ -41,7 +41,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
   const colors = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
   const linkedSubject = task.subject_id ? subjects.find(s => s.id === task.subject_id) : null;
 
-  const isOverdue = task.status !== 'done' && task.scheduled_date && isBefore(parseISO(task.scheduled_date), startOfDay(new Date()));
+  const deadlineOrScheduled = task.deadline || task.scheduled_date;
+  const isOverdue = task.status !== 'done' && deadlineOrScheduled && isBefore(parseISO(deadlineOrScheduled), startOfDay(new Date()));
 
   const moveStatus = (direction: -1 | 1) => {
     const newStatus = STATUS_ORDER[currentIdx + direction];
@@ -140,10 +141,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
               <span className="text-muted-foreground">{linkedSubject.name}</span>
             </div>
           )}
-          {task.scheduled_date && (
-            <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-[hsl(0,72%,51%)] font-medium' : 'text-muted-foreground'}`}>
+          {(task.deadline || task.scheduled_date) && (
+            <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
               <Clock className="h-3 w-3" />
-              <span>{format(parseISO(task.scheduled_date), 'MMM d')}</span>
+              <span>{task.deadline ? `Due ${format(parseISO(task.deadline), 'MMM d')}` : format(parseISO(task.scheduled_date!), 'MMM d')}</span>
               {isOverdue && <span className="text-[10px]">(overdue)</span>}
             </div>
           )}

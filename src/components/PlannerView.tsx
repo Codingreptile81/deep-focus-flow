@@ -5,14 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import TaskCard from '@/components/TaskCard';
 
 interface PlannerViewProps {
   tasks: Task[];
   subjects: Subject[];
-  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => void;
+  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
@@ -27,7 +29,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
   const [recurrence, setRecurrence] = useState<string>('none');
   const [subjectId, setSubjectId] = useState<string>('none');
   const [estimateMinutes, setEstimateMinutes] = useState('');
-
+  const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks
     .filter(t => t.scheduled_date === dateStr)
@@ -39,6 +41,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
       title: title.trim(),
       description: description.trim() || undefined,
       scheduled_date: dateStr,
+      deadline: deadline ? format(deadline, 'yyyy-MM-dd') : undefined,
       start_time: startTime || undefined,
       end_time: endTime || undefined,
       priority,
@@ -54,6 +57,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
     setRecurrence('none');
     setSubjectId('none');
     setEstimateMinutes('');
+    setDeadline(undefined);
   };
 
   return (
@@ -86,6 +90,17 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, o
               </SelectContent>
             </Select>
             <Input type="number" placeholder="Estimate (minutes)" value={estimateMinutes} onChange={e => setEstimateMinutes(e.target.value)} min={1} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !deadline && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {deadline ? format(deadline, 'PPP') : <span>Deadline (optional)</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
             <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>

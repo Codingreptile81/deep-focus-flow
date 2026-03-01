@@ -10,6 +10,7 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   scheduled_date?: string;
+  deadline?: string;
   start_time?: string;
   end_time?: string;
   priority: TaskPriority;

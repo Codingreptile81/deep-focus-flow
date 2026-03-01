@@ -197,6 +197,7 @@ export type Database = {
         Row: {
           actual_minutes: number
           created_at: string
+          deadline: string | null
           description: string | null
           end_time: string | null
           estimate_minutes: number | null
@@ -214,6 +215,7 @@ export type Database = {
         Insert: {
           actual_minutes?: number
           created_at?: string
+          deadline?: string | null
           description?: string | null
           end_time?: string | null
           estimate_minutes?: number | null
@@ -231,6 +233,7 @@ export type Database = {
         Update: {
           actual_minutes?: number
           created_at?: string
+          deadline?: string | null
           description?: string | null
           end_time?: string | null
           estimate_minutes?: number | null
