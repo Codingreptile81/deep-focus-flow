@@ -78,7 +78,7 @@ const DashboardPage: React.FC = () => {
       </div>
 
       {/* Main layout: Activity Calendar on left, stats + content on right */}
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+      <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-6">
         {/* Left side: Activity Calendar */}
         <div className="space-y-4">
           <ActivityCalendar
