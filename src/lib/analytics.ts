@@ -112,11 +112,13 @@ export const formatMinutes = (minutes: number): string => {
   return `${h}h ${m}m`;
 };
 
-export const getDailyStudyData = (logs: SessionLog[]) => {
-  return Array.from({ length: 30 }, (_, i) => {
-    const date = format(subDays(new Date(), 29 - i), 'yyyy-MM-dd');
-    const label = format(subDays(new Date(), 29 - i), 'MMM d');
-    const minutes = logs.filter(l => l.date === date).reduce((s, l) => s + l.duration_minutes, 0);
+export const getMonthlyStudyData = (logs: SessionLog[]) => {
+  return Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (11 - i));
+    const month = format(date, 'yyyy-MM');
+    const label = format(date, 'MMM');
+    const minutes = logs.filter(l => l.date.startsWith(month)).reduce((s, l) => s + l.duration_minutes, 0);
     return { date: label, minutes };
   });
 };
