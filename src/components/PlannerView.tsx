@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { Task, TaskPriority } from '@/types';
+import { Task, TaskPriority, TaskRecurrence } from '@/types';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import TaskCard from '@/components/TaskCard';
 
 interface PlannerViewProps {
   tasks: Task[];
-  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority }) => void;
+  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
@@ -24,6 +23,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [recurrence, setRecurrence] = useState<string>('none');
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks
@@ -39,12 +39,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
       start_time: startTime || undefined,
       end_time: endTime || undefined,
       priority,
+      recurrence: recurrence === 'none' ? null : recurrence as TaskRecurrence,
     });
     setTitle('');
     setDescription('');
     setStartTime('');
     setEndTime('');
     setPriority('medium');
+    setRecurrence('none');
   };
 
   return (
@@ -73,6 +75,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={recurrence} onValueChange={setRecurrence}>
+              <SelectTrigger><SelectValue placeholder="Repeat" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No repeat</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
               </SelectContent>
             </Select>
             <Button className="w-full" size="sm" onClick={handleAdd} disabled={!title.trim()}>

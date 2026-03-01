@@ -3,12 +3,24 @@ import { Task, TaskStatus } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Clock, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat } from 'lucide-react';
 
-const PRIORITY_STYLES: Record<string, string> = {
-  high: 'bg-destructive text-destructive-foreground',
-  medium: 'bg-accent text-accent-foreground',
-  low: 'bg-secondary text-secondary-foreground',
+const PRIORITY_COLORS: Record<string, { border: string; bg: string; badge: string }> = {
+  high: {
+    border: 'border-l-4 border-l-[hsl(0,72%,51%)]',
+    bg: '',
+    badge: 'bg-[hsl(0,72%,51%)] text-white',
+  },
+  medium: {
+    border: 'border-l-4 border-l-[hsl(45,93%,47%)]',
+    bg: '',
+    badge: 'bg-[hsl(45,93%,47%)] text-white',
+  },
+  low: {
+    border: 'border-l-4 border-l-[hsl(160,60%,45%)]',
+    bg: '',
+    badge: 'bg-[hsl(160,60%,45%)] text-white',
+  },
 };
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done'];
@@ -23,12 +35,14 @@ interface TaskCardProps {
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   showMoveButtons?: boolean;
+  isDragging?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, showMoveButtons = true }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, showMoveButtons = true, isDragging = false }) => {
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
   const canMoveRight = currentIdx < STATUS_ORDER.length - 1;
+  const colors = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
 
   const moveStatus = (direction: -1 | 1) => {
     const newStatus = STATUS_ORDER[currentIdx + direction];
@@ -36,25 +50,33 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onUpdateTask, onDeleteTask, s
   };
 
   return (
-    <Card className="group">
+    <Card className={`group ${colors.border} ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''} transition-all`}>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <p className={`text-sm font-medium leading-tight ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
             {task.title}
           </p>
-          <Badge className={`shrink-0 text-[10px] ${PRIORITY_STYLES[task.priority]}`}>
+          <Badge className={`shrink-0 text-[10px] border-0 ${colors.badge}`}>
             {task.priority}
           </Badge>
         </div>
         {task.description && (
           <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
         )}
-        {(task.start_time || task.end_time) && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(task.start_time || task.end_time) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
+            </div>
+          )}
+          {task.recurrence && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Repeat className="h-3 w-3" />
+              <span>{task.recurrence}</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center justify-between pt-1">
           {showMoveButtons ? (
             <div className="flex gap-1">
