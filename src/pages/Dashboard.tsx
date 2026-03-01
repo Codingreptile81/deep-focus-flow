@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { Timer, CheckSquare, Flame, Clock, ArrowRight, Zap, Trophy, Award, Star, Shield, TrendingUp } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { Timer, CheckSquare, Flame, Clock, ArrowRight, Zap, Trophy, Award, Star, Shield, TrendingUp, AlertTriangle, CalendarClock } from 'lucide-react';
+import { format, subDays, isBefore, startOfDay, parseISO, addDays } from 'date-fns';
 
 // Badge definitions
 const STREAK_BADGES = [
@@ -27,7 +27,7 @@ const getStreakBadge = (streak: number) => {
 };
 
 const DashboardPage: React.FC = () => {
-  const { subjects, habits, sessionLogs, habitLogs } = useAppState();
+  const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
   const todayMinutes = getTodayStudyMinutes(sessionLogs);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todaySessions = sessionLogs.filter(l => l.date === todayStr);
@@ -114,7 +114,63 @@ const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Streak Badges */}
+      {/* Overdue & Upcoming Deadlines */}
+      {tasks.length > 0 && (() => {
+        const today = startOfDay(new Date());
+        const overdueTasks = tasks.filter(t => t.status !== 'done' && t.scheduled_date && isBefore(parseISO(t.scheduled_date), today));
+        const next7 = addDays(today, 7);
+        const upcomingTasks = tasks.filter(t => {
+          if (t.status === 'done' || !t.scheduled_date) return false;
+          const d = parseISO(t.scheduled_date);
+          return !isBefore(d, today) && isBefore(d, next7);
+        }).sort((a, b) => a.scheduled_date!.localeCompare(b.scheduled_date!));
+
+        if (overdueTasks.length === 0 && upcomingTasks.length === 0) return null;
+
+        return (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {overdueTasks.length > 0 && (
+              <Card className="p-5 border-destructive/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <h3 className="font-semibold text-sm">Overdue ({overdueTasks.length})</h3>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {overdueTasks.slice(0, 5).map(t => (
+                    <div key={t.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-destructive/5">
+                      <span className="text-sm truncate flex-1">{t.title}</span>
+                      <span className="text-xs text-destructive font-mono ml-2">{t.scheduled_date}</span>
+                    </div>
+                  ))}
+                  {overdueTasks.length > 5 && (
+                    <Link to="/planner" className="text-xs text-destructive hover:underline">+{overdueTasks.length - 5} more</Link>
+                  )}
+                </div>
+              </Card>
+            )}
+            {upcomingTasks.length > 0 && (
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarClock className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Upcoming (7 days)</h3>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {upcomingTasks.slice(0, 5).map(t => (
+                    <div key={t.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-muted/50">
+                      <span className="text-sm truncate flex-1">{t.title}</span>
+                      <span className="text-xs text-muted-foreground font-mono ml-2">{format(parseISO(t.scheduled_date!), 'EEE, MMM d')}</span>
+                    </div>
+                  ))}
+                  {upcomingTasks.length > 5 && (
+                    <Link to="/planner" className="text-xs text-primary hover:underline">+{upcomingTasks.length - 5} more</Link>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+        );
+      })()}
+
       {habitStreaks.length > 0 && habitStreaks.some(s => s.badge) && (
         <Card className="p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
