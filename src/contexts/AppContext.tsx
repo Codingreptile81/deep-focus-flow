@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { Subject, Habit, SessionLog, HabitLog, Task, TaskPriority } from '@/types';
+import { Subject, Habit, SessionLog, HabitLog, Task, TaskPriority, TaskRecurrence } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,7 +17,7 @@ interface AppState {
   addHabitLog: (log: Omit<HabitLog, 'id'>) => Promise<void>;
   deleteSubject: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
-  addTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority }) => Promise<void>;
+  addTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
 }
@@ -58,7 +58,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHabits((habRes.data as any[])?.map(r => ({ id: r.id, name: r.name, metric_type: r.metric_type, target_value: r.target_value ? Number(r.target_value) : undefined, color: r.color, icon: r.icon, created_at: r.created_at })) || []);
       setSessionLogs((sesRes.data as any[])?.map(r => ({ id: r.id, subject_id: r.subject_id, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date })) || []);
       setHabitLogs((hlRes.data as any[])?.map(r => ({ id: r.id, habit_id: r.habit_id, value: Number(r.value), date: r.date, note: r.note })) || []);
-      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, created_at: r.created_at })) || []);
+      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, created_at: r.created_at })) || []);
       setLoading(false);
     };
     fetchAll();
@@ -118,18 +118,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) setHabits(prev => prev.filter(h => h.id !== id));
   }, [user]);
 
-  const addTask = useCallback(async (t: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority }) => {
+  const addTask = useCallback(async (t: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => {
     if (!user) return;
     const { data, error } = await supabase.from('tasks').insert({ ...t, user_id: user.id, status: 'todo', position: 0 } as any).select().single();
     if (data && !error) {
       const r = data as any;
-      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, created_at: r.created_at }]);
+      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, created_at: r.created_at }]);
     }
   }, [user]);
 
   const updateTask = useCallback(async (t: Task) => {
     if (!user) return;
-    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position } as any).eq('id', t.id);
+    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence } as any).eq('id', t.id);
     if (!error) setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
   }, [user]);
 

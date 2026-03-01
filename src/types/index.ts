@@ -2,6 +2,8 @@ export type SubjectCategory = 'study' | 'skill';
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 
+export type TaskRecurrence = 'daily' | 'weekly' | null;
+
 export interface Task {
   id: string;
   title: string;
@@ -12,6 +14,7 @@ export interface Task {
   end_time?: string;
   priority: TaskPriority;
   position: number;
+  recurrence?: TaskRecurrence;
   created_at: string;
 }
 export type MetricType = 'binary' | 'count' | 'minutes';

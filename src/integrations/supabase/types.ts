@@ -191,6 +191,7 @@ export type Database = {
           id: string
           position: number
           priority: string
+          recurrence: string | null
           scheduled_date: string | null
           start_time: string | null
           status: string
@@ -204,6 +205,7 @@ export type Database = {
           id?: string
           position?: number
           priority?: string
+          recurrence?: string | null
           scheduled_date?: string | null
           start_time?: string | null
           status?: string
@@ -217,6 +219,7 @@ export type Database = {
           id?: string
           position?: number
           priority?: string
+          recurrence?: string | null
           scheduled_date?: string | null
           start_time?: string | null
           status?: string
