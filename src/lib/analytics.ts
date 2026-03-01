@@ -1,5 +1,5 @@
-import { SessionLog, HabitLog, Subject, Habit } from '@/types';
-import { format, subDays, differenceInCalendarDays, startOfWeek, parseISO } from 'date-fns';
+import { SessionLog, HabitLog, Subject, Habit, Task } from '@/types';
+import { format, subDays, differenceInCalendarDays, parseISO } from 'date-fns';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -13,13 +13,12 @@ export const getSubjectTodayMinutes = (logs: SessionLog[], subjectId: string): n
   logs.filter(l => l.subject_id === subjectId && l.date === today()).reduce((sum, l) => sum + l.duration_minutes, 0);
 
 export const getWeeklyStudyData = (logs: SessionLog[], subjects: Subject[]) => {
-  const days = Array.from({ length: 7 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const date = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
     const dayName = format(subDays(new Date(), 6 - i), 'EEE');
     const minutes = logs.filter(l => l.date === date).reduce((s, l) => s + l.duration_minutes, 0);
     return { day: dayName, date, minutes };
   });
-  return days;
 };
 
 export const getSubjectDistribution = (logs: SessionLog[], subjects: Subject[]) => {
@@ -34,17 +33,14 @@ export const getHabitStreak = (logs: HabitLog[], habitId: string): number => {
   const habitLogs = logs.filter(l => l.habit_id === habitId);
   const dates = [...new Set(habitLogs.map(l => l.date))].sort().reverse();
   if (dates.length === 0) return 0;
-
   let streak = 0;
   const todayStr = today();
   let checkDate = todayStr;
-
   for (let i = 0; i < 365; i++) {
     if (dates.includes(checkDate)) {
       streak++;
       checkDate = format(subDays(parseISO(checkDate), 1), 'yyyy-MM-dd');
     } else if (i === 0) {
-      // Today not logged yet, check yesterday
       checkDate = format(subDays(new Date(), 1), 'yyyy-MM-dd');
       continue;
     } else {
@@ -123,4 +119,84 @@ export const getDailyStudyData = (logs: SessionLog[]) => {
     const minutes = logs.filter(l => l.date === date).reduce((s, l) => s + l.duration_minutes, 0);
     return { date: label, minutes };
   });
+};
+
+// ═══════════════════════════════════════════
+// V2 Analytics: Task, Kanban, Planning
+// ═══════════════════════════════════════════
+
+export const getTimePerTask = (logs: SessionLog[], tasks: Task[]) => {
+  return tasks.map(t => ({
+    id: t.id,
+    title: t.title,
+    minutes: logs.filter(l => l.task_id === t.id).reduce((s, l) => s + l.duration_minutes, 0),
+  })).filter(t => t.minutes > 0);
+};
+
+export const getTodosCompletedPerDay = (tasks: Task[]) => {
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = format(subDays(new Date(), 6 - i), 'yyyy-MM-dd');
+    const dayName = format(subDays(new Date(), 6 - i), 'EEE');
+    // We don't have completed_at on tasks so we approximate with scheduled_date for done tasks
+    const completed = tasks.filter(t => t.status === 'done' && t.scheduled_date === date).length;
+    return { day: dayName, completed };
+  });
+};
+
+export const getTodoCompletionRate = (tasks: Task[]): number => {
+  if (tasks.length === 0) return 0;
+  const done = tasks.filter(t => t.status === 'done').length;
+  return Math.round((done / tasks.length) * 100);
+};
+
+export const getOverdueTodos = (tasks: Task[]): Task[] => {
+  const todayStr = today();
+  return tasks.filter(t => t.status !== 'done' && t.scheduled_date && t.scheduled_date < todayStr);
+};
+
+export const getCardsCompletedPerWeek = (tasks: Task[]) => {
+  return Array.from({ length: 4 }, (_, i) => {
+    const weekEnd = subDays(new Date(), i * 7);
+    const weekStart = subDays(weekEnd, 6);
+    const startStr = format(weekStart, 'yyyy-MM-dd');
+    const endStr = format(weekEnd, 'yyyy-MM-dd');
+    const label = `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`;
+    const completed = tasks.filter(t => t.status === 'done' && t.scheduled_date && t.scheduled_date >= startStr && t.scheduled_date <= endStr).length;
+    return { week: label, completed };
+  }).reverse();
+};
+
+export const getWIPCount = (tasks: Task[]): number =>
+  tasks.filter(t => t.status === 'in_progress').length;
+
+export const getTimePerColumn = (logs: SessionLog[], tasks: Task[]) => {
+  const columns = ['todo', 'in_progress', 'done'] as const;
+  return columns.map(status => {
+    const colTaskIds = tasks.filter(t => t.status === status).map(t => t.id);
+    const minutes = logs.filter(l => l.task_id && colTaskIds.includes(l.task_id)).reduce((s, l) => s + l.duration_minutes, 0);
+    return { column: status === 'todo' ? 'To Do' : status === 'in_progress' ? 'In Progress' : 'Done', minutes };
+  });
+};
+
+export const getPlannedVsActual = (tasks: Task[]) => {
+  const planned = tasks.reduce((s, t) => s + (t.estimate_minutes || 0), 0);
+  const actual = tasks.reduce((s, t) => s + t.actual_minutes, 0);
+  return { planned, actual };
+};
+
+export const getFocusAccuracy = (tasks: Task[]): number => {
+  const { planned, actual } = getPlannedVsActual(tasks);
+  if (planned === 0) return 0;
+  return Math.round((actual / planned) * 100);
+};
+
+export const getEstimateAccuracy = (tasks: Task[]) => {
+  return tasks
+    .filter(t => t.estimate_minutes && t.estimate_minutes > 0 && t.actual_minutes > 0)
+    .map(t => ({
+      title: t.title,
+      estimate: t.estimate_minutes!,
+      actual: t.actual_minutes,
+      accuracy: Math.round((t.actual_minutes / t.estimate_minutes!) * 100),
+    }));
 };

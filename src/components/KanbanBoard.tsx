@@ -1,6 +1,6 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Task, TaskStatus } from '@/types';
+import { Task, TaskStatus, Subject } from '@/types';
 import TaskCard from '@/components/TaskCard';
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
@@ -11,11 +11,12 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
 
 interface KanbanBoardProps {
   tasks: Task[];
+  subjects: Subject[];
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTask, onDeleteTask }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask, onDeleteTask }) => {
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const taskId = result.draggableId;
@@ -53,17 +54,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onUpdateTask, onDelete
                     {colTasks.map((task, index) => (
                       <Draggable key={task.id} draggableId={task.id} index={index}>
                         {(dragProvided, dragSnapshot) => (
-                          <div
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
-                            {...dragProvided.dragHandleProps}
-                          >
-                            <TaskCard
-                              task={task}
-                              onUpdateTask={onUpdateTask}
-                              onDeleteTask={onDeleteTask}
-                              isDragging={dragSnapshot.isDragging}
-                            />
+                          <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps}>
+                            <TaskCard task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} isDragging={dragSnapshot.isDragging} />
                           </div>
                         )}
                       </Draggable>

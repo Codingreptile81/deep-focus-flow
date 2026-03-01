@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task, TaskPriority, TaskRecurrence } from '@/types';
+import { Task, TaskPriority, TaskRecurrence, Subject, SUBJECT_COLOR_MAP } from '@/types';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,13 @@ import TaskCard from '@/components/TaskCard';
 
 interface PlannerViewProps {
   tasks: Task[];
-  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => void;
+  subjects: Subject[];
+  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
 
-const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTask, onDeleteTask }) => {
+const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, onAddTask, onUpdateTask, onDeleteTask }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -24,6 +25,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
   const [endTime, setEndTime] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [recurrence, setRecurrence] = useState<string>('none');
+  const [subjectId, setSubjectId] = useState<string>('none');
+  const [estimateMinutes, setEstimateMinutes] = useState('');
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks
@@ -40,6 +43,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
       end_time: endTime || undefined,
       priority,
       recurrence: recurrence === 'none' ? null : recurrence as TaskRecurrence,
+      subject_id: subjectId === 'none' ? undefined : subjectId,
+      estimate_minutes: estimateMinutes ? parseInt(estimateMinutes) : undefined,
     });
     setTitle('');
     setDescription('');
@@ -47,17 +52,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
     setEndTime('');
     setPriority('medium');
     setRecurrence('none');
+    setSubjectId('none');
+    setEstimateMinutes('');
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <div className="space-y-4">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={d => d && setSelectedDate(d)}
-          className="rounded-md border"
-        />
+        <Calendar mode="single" selected={selectedDate} onSelect={d => d && setSelectedDate(d)} className="rounded-md border" />
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Add Task</CardTitle>
@@ -69,6 +71,21 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
               <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
               <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
             </div>
+            <Select value={subjectId} onValueChange={setSubjectId}>
+              <SelectTrigger><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No subject</SelectItem>
+                {subjects.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[s.color] }} />
+                      {s.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input type="number" placeholder="Estimate (minutes)" value={estimateMinutes} onChange={e => setEstimateMinutes(e.target.value)} min={1} />
             <Select value={priority} onValueChange={v => setPriority(v as TaskPriority)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -97,7 +114,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, onAddTask, onUpdateTas
           <p className="text-sm text-muted-foreground py-8 text-center">No tasks scheduled for this day</p>
         )}
         {dayTasks.map(task => (
-          <TaskCard key={task.id} task={task} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} showMoveButtons={false} />
+          <TaskCard key={task.id} task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} showMoveButtons={false} />
         ))}
       </div>
     </div>

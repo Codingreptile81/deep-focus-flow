@@ -17,7 +17,7 @@ interface AppState {
   addHabitLog: (log: Omit<HabitLog, 'id'>) => Promise<void>;
   deleteSubject: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
-  addTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => Promise<void>;
+  addTask: (task: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => Promise<void>;
   updateTask: (task: Task) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
 }
@@ -33,7 +33,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all data when user changes
   useEffect(() => {
     if (!user) {
       setSubjects([]);
@@ -56,9 +55,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]);
       setSubjects((subRes.data as any[])?.map(r => ({ id: r.id, name: r.name, category: r.category, goal_hours: r.goal_hours ? Number(r.goal_hours) : undefined, color: r.color, created_at: r.created_at })) || []);
       setHabits((habRes.data as any[])?.map(r => ({ id: r.id, name: r.name, metric_type: r.metric_type, target_value: r.target_value ? Number(r.target_value) : undefined, color: r.color, icon: r.icon, created_at: r.created_at })) || []);
-      setSessionLogs((sesRes.data as any[])?.map(r => ({ id: r.id, subject_id: r.subject_id, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date })) || []);
+      setSessionLogs((sesRes.data as any[])?.map(r => ({ id: r.id, subject_id: r.subject_id, task_id: r.task_id || undefined, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date })) || []);
       setHabitLogs((hlRes.data as any[])?.map(r => ({ id: r.id, habit_id: r.habit_id, value: Number(r.value), date: r.date, note: r.note })) || []);
-      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, created_at: r.created_at })) || []);
+      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, created_at: r.created_at })) || []);
       setLoading(false);
     };
     fetchAll();
@@ -90,12 +89,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addSessionLog = useCallback(async (l: Omit<SessionLog, 'id'>) => {
     if (!user) return;
-    const { data, error } = await supabase.from('session_logs').insert({ ...l, user_id: user.id } as any).select().single();
+    const insertData: any = { subject_id: l.subject_id, duration_minutes: l.duration_minutes, started_at: l.started_at, completed_at: l.completed_at, date: l.date, user_id: user.id };
+    if (l.task_id) insertData.task_id = l.task_id;
+    const { data, error } = await supabase.from('session_logs').insert(insertData).select().single();
     if (data && !error) {
       const r = data as any;
-      setSessionLogs(prev => [...prev, { id: r.id, subject_id: r.subject_id, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date }]);
+      setSessionLogs(prev => [...prev, { id: r.id, subject_id: r.subject_id, task_id: r.task_id || undefined, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date }]);
+
+      // Update task actual_minutes if linked
+      if (l.task_id) {
+        const task = tasks.find(t => t.id === l.task_id);
+        if (task) {
+          const newActual = task.actual_minutes + l.duration_minutes;
+          await supabase.from('tasks').update({ actual_minutes: newActual } as any).eq('id', l.task_id);
+          setTasks(prev => prev.map(t => t.id === l.task_id ? { ...t, actual_minutes: newActual } : t));
+        }
+      }
     }
-  }, [user]);
+  }, [user, tasks]);
 
   const addHabitLog = useCallback(async (l: Omit<HabitLog, 'id'>) => {
     if (!user) return;
@@ -118,18 +129,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) setHabits(prev => prev.filter(h => h.id !== id));
   }, [user]);
 
-  const addTask = useCallback(async (t: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence }) => {
+  const addTask = useCallback(async (t: { title: string; description?: string; scheduled_date?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => {
     if (!user) return;
-    const { data, error } = await supabase.from('tasks').insert({ ...t, user_id: user.id, status: 'todo', position: 0 } as any).select().single();
+    const insertData: any = { title: t.title, user_id: user.id, status: 'todo', position: 0, priority: t.priority };
+    if (t.description) insertData.description = t.description;
+    if (t.scheduled_date) insertData.scheduled_date = t.scheduled_date;
+    if (t.start_time) insertData.start_time = t.start_time;
+    if (t.end_time) insertData.end_time = t.end_time;
+    if (t.recurrence) insertData.recurrence = t.recurrence;
+    if (t.subject_id) insertData.subject_id = t.subject_id;
+    if (t.estimate_minutes) insertData.estimate_minutes = t.estimate_minutes;
+    const { data, error } = await supabase.from('tasks').insert(insertData).select().single();
     if (data && !error) {
       const r = data as any;
-      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, created_at: r.created_at }]);
+      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, created_at: r.created_at }]);
     }
   }, [user]);
 
   const updateTask = useCallback(async (t: Task) => {
     if (!user) return;
-    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence } as any).eq('id', t.id);
+    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence, subject_id: t.subject_id || null, estimate_minutes: t.estimate_minutes || null, actual_minutes: t.actual_minutes } as any).eq('id', t.id);
     if (!error) setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
   }, [user]);
 
