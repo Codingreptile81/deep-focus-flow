@@ -1,4 +1,19 @@
 export type SubjectCategory = 'study' | 'skill';
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+export type TaskPriority = 'low' | 'medium' | 'high';
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  scheduled_date?: string;
+  start_time?: string;
+  end_time?: string;
+  priority: TaskPriority;
+  position: number;
+  created_at: string;
+}
 export type MetricType = 'binary' | 'count' | 'minutes';
 
 export interface Subject {

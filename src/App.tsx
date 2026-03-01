@@ -12,6 +12,7 @@ import HabitsPage from "./pages/HabitsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PlannerPage from "./pages/PlannerPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const AuthGate: React.FC = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/timer" element={<TimerPage />} />
           <Route path="/habits" element={<HabitsPage />} />
+          <Route path="/planner" element={<PlannerPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
