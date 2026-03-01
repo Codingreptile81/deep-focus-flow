@@ -57,19 +57,27 @@ Calendar-based task planning with:
 - Recurring tasks (daily / weekly)
 - Inline editing by clicking any task
 - Overdue indicators for missed deadlines
+- Floating "+" button for quick task creation
 
 ### 📋 Kanban Board
 Drag-and-drop board with three columns: To Do → In Progress → Done. Cards show subject, priority, time tracked, and overdue status.
 
 ### 🔥 Habits
-Daily habit tracker supporting binary, count, and minute-based metrics. Includes streak tracking and a calendar heatmap view.
+Daily habit tracker supporting binary, count, and minute-based metrics. Includes streak tracking with gamified badges.
+
+### 🗓 Activity Calendar (Dashboard)
+GitHub/TUF+-style heatmap calendar on the Dashboard that visualizes daily productivity:
+- **Intensity levels**: Empty → light green → medium green → dark green based on completed tasks + habits
+- **Interactive popovers**: Click any day to see tasks completed, habits completed
+- **Responsive layout**: Stacks on top on mobile, sits in a sidebar on desktop
+- Serves as the single central progress visualization for DeepTrack
 
 ### 📊 Analytics Dashboard
 Four-tab analytics view:
 
 | Tab | Metrics |
 |-----|---------|
-| **Study** | Weekly/daily study time, subject distribution pie, habit streaks |
+| **Study** | Monthly study time, subject distribution pie, habit streaks |
 | **Tasks** | Completion rate, daily throughput, time per task, overdue count |
 | **Kanban** | WIP count, cards completed/week, time per column |
 | **Planning** | Planned vs actual time, focus accuracy %, estimate accuracy per task |
