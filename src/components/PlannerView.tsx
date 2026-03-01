@@ -11,7 +11,6 @@ import { Plus, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import TaskCard from '@/components/TaskCard';
-import ActivityCalendar from '@/components/ActivityCalendar';
 
 interface PlannerViewProps {
   tasks: Task[];
@@ -25,7 +24,6 @@ interface PlannerViewProps {
 
 const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habitLogs, onAddTask, onUpdateTask, onDeleteTask }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -75,15 +73,14 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <div className="space-y-4">
-        <ActivityCalendar
-          tasks={tasks}
-          habitLogs={habitLogs}
-          habits={habits}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          currentMonth={currentMonth}
-          onMonthChange={setCurrentMonth}
-        />
+        <div className="rounded-md border">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => date && setSelectedDate(date)}
+            className="p-3"
+          />
+        </div>
       </div>
 
       <div className="space-y-3 relative min-h-[300px]">
