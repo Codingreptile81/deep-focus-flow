@@ -1,73 +1,126 @@
-# Welcome to your Lovable project
+# DeepTrack — Unified Productivity System
 
-## Project info
+**DeepTrack** is a personal productivity app that unifies **planning**, **execution**, and **analytics** around the concept of *Subjects* — the things you study, learn, or work on.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Why DeepTrack?
 
-There are several ways of editing your application.
+Most productivity tools treat timers, task lists, and habit trackers as separate apps. DeepTrack connects them:
 
-**Use Lovable**
+- **Plan** your work with todos and a Kanban board
+- **Execute** with a Pomodoro timer linked to your tasks and subjects
+- **Track** habits daily with streaks and completion rates
+- **Analyze** everything — study time, task throughput, estimate accuracy — in one unified dashboard
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Every minute you spend is attributed to a subject, whether you started the timer on a subject directly, a todo, or a Kanban card. This gives you a complete, consistent picture of where your time goes.
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## Core Workflow
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```
+Subjects ← link → Tasks (Todo / Kanban)
+    ↓                    ↓
+Pomodoro Timer ──→ SessionLogs ──→ Analytics
+    ↓
+Habit Tracker ──→ HabitLogs ──→ Analytics
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. **Create Subjects** — e.g. "Mathematics", "React", "Spanish"
+2. **Create Tasks** — link them to subjects, set priorities, estimates, and due dates
+3. **Start a Pomodoro** — choose a subject, a todo, or an in-progress Kanban card
+4. **Session completes** → a `SessionLog` is created, `actual_minutes` on the task updates automatically
+5. **Log habits daily** — binary (did/didn't), count, or minutes
+6. **View Analytics** — study trends, task throughput, Kanban flow, planning accuracy
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+## Features
+
+### 📚 Subjects
+Organize your work into color-coded subjects with categories (Study / Skill) and optional goal hours. Subjects are the backbone — all time tracking rolls up to them.
+
+### ⏱ Pomodoro Timer
+Focus timer with three targeting modes:
+- **Subject** — pure study time
+- **Todo** — work on a specific planned task
+- **Kanban Card** — work on an in-progress item
+
+Selecting a task auto-fills its linked subject, so all time stays unified.
+
+### ✅ Planner (Todo)
+Calendar-based task planning with:
+- Date scheduling and time blocks
+- Priority levels (Low / Medium / High) with color coding
+- Subject linking and time estimates
+- Recurring tasks (daily / weekly)
+- Inline editing by clicking any task
+- Overdue indicators for missed deadlines
+
+### 📋 Kanban Board
+Drag-and-drop board with three columns: To Do → In Progress → Done. Cards show subject, priority, time tracked, and overdue status.
+
+### 🔥 Habits
+Daily habit tracker supporting binary, count, and minute-based metrics. Includes streak tracking and a calendar heatmap view.
+
+### 📊 Analytics Dashboard
+Four-tab analytics view:
+
+| Tab | Metrics |
+|-----|---------|
+| **Study** | Weekly/daily study time, subject distribution pie, habit streaks |
+| **Tasks** | Completion rate, daily throughput, time per task, overdue count |
+| **Kanban** | WIP count, cards completed/week, time per column |
+| **Planning** | Planned vs actual time, focus accuracy %, estimate accuracy per task |
+
+---
+
+## Tech Stack
+
+- **Frontend**: React 18 + TypeScript + Vite
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Charts**: Recharts
+- **Drag & Drop**: @hello-pangea/dnd
+- **Backend**: Lovable Cloud (Supabase) — auth, database, RLS
+- **Date handling**: date-fns
+
+---
+
+## Getting Started
+
+```bash
+# Clone and install
 git clone <YOUR_GIT_URL>
+cd deeptrack
+npm install
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+1. Create an account or sign in
+2. Add your first subject
+3. Start a Pomodoro session
+4. Check Analytics to see your progress
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Database Schema
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Table | Purpose |
+|-------|---------|
+| `subjects` | User's study/skill topics |
+| `tasks` | Todos and Kanban cards (with subject link, estimates) |
+| `session_logs` | Pomodoro sessions (linked to subject and optionally task) |
+| `habits` | Habit definitions |
+| `habit_logs` | Daily habit completions |
+| `profiles` | User profile data |
 
-## What technologies are used for this project?
+All tables use Row Level Security — users can only access their own data.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## License
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Private project built with [Lovable](https://lovable.dev).
