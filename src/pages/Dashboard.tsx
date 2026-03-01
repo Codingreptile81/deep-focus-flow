@@ -117,13 +117,15 @@ const DashboardPage: React.FC = () => {
       {/* Overdue & Upcoming Deadlines */}
       {tasks.length > 0 && (() => {
         const today = startOfDay(new Date());
-        const overdueTasks = tasks.filter(t => t.status !== 'done' && t.scheduled_date && isBefore(parseISO(t.scheduled_date), today));
+        const getDeadlineDate = (t: typeof tasks[0]) => t.deadline || t.scheduled_date;
+        const overdueTasks = tasks.filter(t => { const d = getDeadlineDate(t); return t.status !== 'done' && d && isBefore(parseISO(d), today); });
         const next7 = addDays(today, 7);
         const upcomingTasks = tasks.filter(t => {
-          if (t.status === 'done' || !t.scheduled_date) return false;
-          const d = parseISO(t.scheduled_date);
-          return !isBefore(d, today) && isBefore(d, next7);
-        }).sort((a, b) => a.scheduled_date!.localeCompare(b.scheduled_date!));
+          const d = getDeadlineDate(t);
+          if (t.status === 'done' || !d) return false;
+          const dp = parseISO(d);
+          return !isBefore(dp, today) && isBefore(dp, next7);
+        }).sort((a, b) => (getDeadlineDate(a) || '').localeCompare(getDeadlineDate(b) || ''));
 
         if (overdueTasks.length === 0 && upcomingTasks.length === 0) return null;
 
@@ -139,7 +141,7 @@ const DashboardPage: React.FC = () => {
                   {overdueTasks.slice(0, 5).map(t => (
                     <div key={t.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-destructive/5">
                       <span className="text-sm truncate flex-1">{t.title}</span>
-                      <span className="text-xs text-destructive font-mono ml-2">{t.scheduled_date}</span>
+                      <span className="text-xs text-destructive font-mono ml-2">{t.deadline || t.scheduled_date}</span>
                     </div>
                   ))}
                   {overdueTasks.length > 5 && (
@@ -158,7 +160,7 @@ const DashboardPage: React.FC = () => {
                   {upcomingTasks.slice(0, 5).map(t => (
                     <div key={t.id} className="flex items-center justify-between py-1.5 px-2.5 rounded-lg bg-muted/50">
                       <span className="text-sm truncate flex-1">{t.title}</span>
-                      <span className="text-xs text-muted-foreground font-mono ml-2">{format(parseISO(t.scheduled_date!), 'EEE, MMM d')}</span>
+                      <span className="text-xs text-muted-foreground font-mono ml-2">{format(parseISO((t.deadline || t.scheduled_date)!), 'EEE, MMM d')}</span>
                     </div>
                   ))}
                   {upcomingTasks.length > 5 && (
