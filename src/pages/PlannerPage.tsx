@@ -6,7 +6,7 @@ import KanbanBoard from '@/components/KanbanBoard';
 import { CalendarDays, Columns3 } from 'lucide-react';
 
 const PlannerPage: React.FC = () => {
-  const { tasks, subjects, addTask, updateTask, deleteTask } = useAppState();
+  const { tasks, subjects, habits, habitLogs, addTask, updateTask, deleteTask } = useAppState();
 
   return (
     <div className="space-y-6">
@@ -21,7 +21,7 @@ const PlannerPage: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="planner">
-          <PlannerView tasks={tasks} subjects={subjects} onAddTask={addTask} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
+          <PlannerView tasks={tasks} subjects={subjects} habits={habits} habitLogs={habitLogs} onAddTask={addTask} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
         </TabsContent>
         <TabsContent value="kanban">
           <KanbanBoard tasks={tasks} subjects={subjects} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
