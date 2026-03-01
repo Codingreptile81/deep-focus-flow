@@ -2,7 +2,7 @@ import React from 'react';
 import { useAppState } from '@/contexts/AppContext';
 import { SUBJECT_COLOR_MAP } from '@/types';
 import {
-  getSubjectDistribution, getWeeklyStudyData, getDailyStudyData,
+  getSubjectDistribution, getWeeklyStudyData, getMonthlyStudyData,
   getWeeklyHabitData, getHabitStreak, getMostFocusedSubject,
   getBestDayOfWeek, formatMinutes,
   getTimePerTask, getTodosCompletedPerDay, getTodoCompletionRate,
@@ -21,7 +21,7 @@ const AnalyticsDashboard: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
 
   const weeklyStudy = getWeeklyStudyData(sessionLogs, subjects);
-  const dailyStudy = getDailyStudyData(sessionLogs);
+  const monthlyStudy = getMonthlyStudyData(sessionLogs);
   const distribution = getSubjectDistribution(sessionLogs, subjects);
   const weeklyHabits = getWeeklyHabitData(habitLogs, habits);
   const mostFocused = getMostFocusedSubject(sessionLogs, subjects);
@@ -138,11 +138,11 @@ const AnalyticsDashboard: React.FC = () => {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <h3 className="font-semibold mb-4">Daily Study (30 days)</h3>
+              <h3 className="font-semibold mb-4">Monthly Study</h3>
               <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={dailyStudy}>
+                <AreaChart data={monthlyStudy}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} interval={4} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
                   <Area type="monotone" dataKey="minutes" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={2} />
