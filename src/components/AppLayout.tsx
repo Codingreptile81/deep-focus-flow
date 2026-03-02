@@ -45,6 +45,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="min-h-screen bg-background">
       {/* Desktop: hover trigger zone + navbar */}
       <div className="hidden md:block fixed top-0 left-0 right-0 z-50 group">
+        {/* Thin accent line indicator */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent group-hover:opacity-0 transition-opacity duration-300" />
         {/* Invisible hover zone */}
         <div className="h-2 w-full" />
         {/* Navbar slides down on hover */}
