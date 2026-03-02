@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, Pencil, ListTree } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, Pencil, ListTree, Paperclip } from 'lucide-react';
+import TaskResources from '@/components/TaskResources';
 import { formatMinutes } from '@/lib/analytics';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
   const [editDeadline, setEditDeadline] = useState<Date | undefined>(task.deadline ? parseISO(task.deadline) : undefined);
   const [addingSubTask, setAddingSubTask] = useState(false);
   const [subTaskTitle, setSubTaskTitle] = useState('');
+  const [showResources, setShowResources] = useState(false);
 
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
@@ -268,6 +270,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
           </div>
         )}
 
+        {/* Resources panel */}
+        {showResources && (
+          <div className="border-t border-border pt-2 mt-1">
+            <TaskResources taskId={task.id} />
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex gap-1">
@@ -286,6 +295,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
                 <Plus className="h-3 w-3" />
               </Button>
             )}
+            <Button variant="ghost" size="icon" className={`h-6 w-6 ${showResources ? 'text-primary' : 'text-muted-foreground'}`} onClick={() => setShowResources(!showResources)} title="Resources">
+              <Paperclip className="h-3 w-3" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={startEdit} title="Edit task">
               <Pencil className="h-3 w-3" />
             </Button>
