@@ -29,7 +29,7 @@ const getStreakBadge = (streak: number) => {
 };
 
 const DashboardPage: React.FC = () => {
-  const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
+  const { subjects, habits, sessionLogs, habitLogs, tasks, addHabitLog } = useAppState();
   const todayMinutes = getTodayStudyMinutes(sessionLogs);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todaySessions = sessionLogs.filter(l => l.date === todayStr);
@@ -39,6 +39,7 @@ const DashboardPage: React.FC = () => {
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date());
   const [calendarDate, setCalendarDate] = React.useState<Date>(new Date());
   const [showTodayTasks, setShowTodayTasks] = React.useState(false);
+  const [showTodayHabits, setShowTodayHabits] = React.useState(false);
 
   const totalStreak = habits.length > 0
     ? Math.max(...habits.map(h => getHabitStreak(habitLogs, h.id)), 0)
@@ -110,22 +111,20 @@ const DashboardPage: React.FC = () => {
               </div>
             </Card>
           </Link>
-          <Link to="/habits">
-            <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-[hsl(142,60%,40%)]/10 flex items-center justify-center">
-                    <CheckSquare className="h-4 w-4 text-[hsl(142,60%,40%)]" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-xs">Log Habit</div>
-                    <div className="text-[10px] text-muted-foreground">{habits.length - completedHabitsToday.length} remaining</div>
-                  </div>
+          <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group" onClick={() => setShowTodayHabits(true)}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-[hsl(142,60%,40%)]/10 flex items-center justify-center">
+                  <CheckSquare className="h-4 w-4 text-[hsl(142,60%,40%)]" />
                 </div>
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <div>
+                  <div className="font-medium text-xs">Today's Habits</div>
+                  <div className="text-[10px] text-muted-foreground">{completedHabitsToday.length}/{habits.length} done</div>
+                </div>
               </div>
-            </Card>
-          </Link>
+              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+          </Card>
           <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group" onClick={() => setShowTodayTasks(true)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -351,6 +350,45 @@ const DashboardPage: React.FC = () => {
                 </div>
               ));
             })()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Today's Habits Dialog */}
+      <Dialog open={showTodayHabits} onOpenChange={setShowTodayHabits}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Today's Habits</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {habits.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No habits created yet.</p>
+            ) : habits.map(habit => {
+              const completed = habitLogs.some(l => l.habit_id === habit.id && l.date === todayStr);
+              const HabitIcon = getHabitIcon(habit.icon);
+              const colorHex = HABIT_COLOR_OPTIONS.find(c => c.value === habit.color)?.hex || 'hsl(210,80%,55%)';
+              return (
+                <div key={habit.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: colorHex + '22' }}>
+                      <HabitIcon className="h-3.5 w-3.5" style={{ color: colorHex }} />
+                    </div>
+                    <span className={`text-sm truncate ${completed ? 'line-through text-muted-foreground' : ''}`}>{habit.name}</span>
+                  </div>
+                  {completed ? (
+                    <span className="text-xs text-success font-medium flex items-center gap-1"><CheckSquare className="h-3.5 w-3.5" /> Done</span>
+                  ) : (
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
+                      if (habit.metric_type === 'binary') {
+                        addHabitLog({ habit_id: habit.id, value: 1, date: todayStr });
+                      }
+                    }}>
+                      <CheckSquare className="h-3 w-3" /> {habit.metric_type === 'binary' ? 'Done' : 'Log'}
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
