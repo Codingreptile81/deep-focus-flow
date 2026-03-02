@@ -154,16 +154,20 @@ const HabitTracker: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Habits</h2>
-        <Dialog open={showAdd} onOpenChange={open => { setShowAdd(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Habit</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader><DialogTitle>Create Habit</DialogTitle></DialogHeader>
-            {habitFormContent(false)}
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Floating Add Button */}
+      <Dialog open={showAdd} onOpenChange={open => { setShowAdd(open); if (!open) resetForm(); }}>
+        <DialogTrigger asChild>
+          <Button size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 hover:scale-105 transition-transform">
+            <Plus className="h-6 w-6" />
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Create Habit</DialogTitle></DialogHeader>
+          {habitFormContent(false)}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingHabit} onOpenChange={open => { if (!open) { setEditingHabit(null); resetForm(); } }}>
