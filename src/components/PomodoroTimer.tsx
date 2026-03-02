@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
 
@@ -20,7 +21,11 @@ interface TimerPersistState {
   durationMinutes: number;
   startedAt: string | null;
   isRunning: boolean;
-  pausedSecondsLeft: number | null; // only set when paused mid-session
+  pausedSecondsLeft: number | null;
+  // Break state
+  onBreak: boolean;
+  breakDurationMinutes: number;
+  breakStartedAt: string | null;
 }
 
 const saveTimerState = (state: TimerPersistState) => {
@@ -57,6 +62,14 @@ const PomodoroTimer: React.FC = () => {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasRestoredRef = useRef(false);
 
+  // Break state
+  const [onBreak, setOnBreak] = useState(false);
+  const [breakDurationMinutes, setBreakDurationMinutes] = useState(5);
+  const [breakSecondsLeft, setBreakSecondsLeft] = useState(0);
+  const [breakStartedAt, setBreakStartedAt] = useState<string | null>(null);
+  const [showBreakDialog, setShowBreakDialog] = useState(false);
+  const breakIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Restore persisted timer state on mount
   useEffect(() => {
     if (hasRestoredRef.current) return;
@@ -67,6 +80,34 @@ const PomodoroTimer: React.FC = () => {
     setFocusTarget(saved.focusTarget);
     setDurationMinutes(saved.durationMinutes);
 
+    // Restore break state
+    if (saved.onBreak && saved.breakStartedAt) {
+      const breakRemaining = calcSecondsLeft(saved.breakStartedAt, saved.breakDurationMinutes);
+      if (breakRemaining > 0) {
+        setOnBreak(true);
+        setBreakDurationMinutes(saved.breakDurationMinutes);
+        setBreakStartedAt(saved.breakStartedAt);
+        setBreakSecondsLeft(breakRemaining);
+        // Preserve study timer paused state
+        if (saved.startedAt && saved.pausedSecondsLeft != null) {
+          setStartedAt(saved.startedAt);
+          setSecondsLeft(saved.pausedSecondsLeft);
+        }
+        return;
+      } else {
+        // Break expired while away — auto-resume study
+        toast({ title: '☕ Break over!', description: 'Your study session has resumed automatically.' });
+        if (saved.startedAt && saved.pausedSecondsLeft != null) {
+          const now = new Date();
+          const adjustedStart = new Date(now.getTime() - (saved.durationMinutes * 60 - saved.pausedSecondsLeft) * 1000);
+          setStartedAt(adjustedStart.toISOString());
+          setSecondsLeft(saved.pausedSecondsLeft);
+          setIsRunning(true);
+          return;
+        }
+      }
+    }
+
     if (saved.isRunning && saved.startedAt) {
       const remaining = calcSecondsLeft(saved.startedAt, saved.durationMinutes);
       if (remaining > 0) {
@@ -74,11 +115,11 @@ const PomodoroTimer: React.FC = () => {
         setSecondsLeft(remaining);
         setIsRunning(true);
       } else {
-        // Timer expired while away — complete session
+        // Timer expired while away
         setStartedAt(saved.startedAt);
         setSecondsLeft(0);
         clearTimerState();
-        sendNotification('Pomodoro Complete!', 'Your focus session has ended.');
+        toast({ title: '🎉 Session Complete!', description: `Your ${saved.durationMinutes}-minute focus session has ended.` });
         if (saved.focusTarget && saved.startedAt) {
           addSessionLog({
             subject_id: saved.focusTarget.subjectId,
@@ -91,7 +132,6 @@ const PomodoroTimer: React.FC = () => {
         }
       }
     } else if (!saved.isRunning && saved.startedAt && saved.pausedSecondsLeft != null) {
-      // Was paused
       setStartedAt(saved.startedAt);
       setSecondsLeft(saved.pausedSecondsLeft);
     } else {
@@ -108,8 +148,11 @@ const PomodoroTimer: React.FC = () => {
       startedAt,
       isRunning,
       pausedSecondsLeft: !isRunning && startedAt ? secondsLeft : null,
+      onBreak,
+      breakDurationMinutes,
+      breakStartedAt,
     });
-  }, [focusTarget, durationMinutes, startedAt, isRunning, secondsLeft]);
+  }, [focusTarget, durationMinutes, startedAt, isRunning, secondsLeft, onBreak, breakDurationMinutes, breakStartedAt]);
 
   const activeTasks = tasks.filter(t => t.status !== 'done');
   const todoTasks = activeTasks.filter(t => t.status === 'todo');
@@ -139,18 +182,6 @@ const PomodoroTimer: React.FC = () => {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, { body, icon: '/favicon.ico' });
     }
-    // Also play a subtle audio beep
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 800;
-      gain.gain.value = 0.3;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
-    } catch {}
   };
 
   const requestNotificationPermission = async () => {
@@ -162,7 +193,8 @@ const PomodoroTimer: React.FC = () => {
   const completeSession = useCallback(() => {
     if (!focusTarget || !startedAt) return;
     clearTimerState();
-    sendNotification('Pomodoro Complete! 🎉', `Your ${durationMinutes}-minute focus session has ended.`);
+    toast({ title: '🎉 Session Complete!', description: `Your ${durationMinutes}-minute focus session has ended.` });
+    sendNotification('Session Complete!', `Your ${durationMinutes}-minute focus session has ended.`);
     addSessionLog({
       subject_id: focusTarget.subjectId,
       task_id: focusTarget.type === 'task' ? focusTarget.taskId : undefined,
@@ -173,6 +205,33 @@ const PomodoroTimer: React.FC = () => {
     });
     setStartedAt(null);
   }, [focusTarget, startedAt, durationMinutes, addSessionLog]);
+
+  // Break timer tick
+  useEffect(() => {
+    if (!onBreak || !breakStartedAt) return;
+    breakIntervalRef.current = setInterval(() => {
+      const remaining = calcSecondsLeft(breakStartedAt, breakDurationMinutes);
+      if (remaining <= 0) {
+        clearInterval(breakIntervalRef.current!);
+        // Break ended — auto-resume study
+        setOnBreak(false);
+        setBreakStartedAt(null);
+        setBreakSecondsLeft(0);
+        toast({ title: '☕ Break over!', description: 'Your study session has resumed automatically.' });
+        sendNotification('Break over!', 'Your study session has resumed.');
+        // Auto-resume
+        if (startedAt) {
+          const now = new Date();
+          const adjustedStart = new Date(now.getTime() - (durationMinutes * 60 - secondsLeft) * 1000);
+          setStartedAt(adjustedStart.toISOString());
+          setIsRunning(true);
+        }
+        return;
+      }
+      setBreakSecondsLeft(remaining);
+    }, 1000);
+    return () => { if (breakIntervalRef.current) clearInterval(breakIntervalRef.current); };
+  }, [onBreak, breakStartedAt, breakDurationMinutes, startedAt, secondsLeft, durationMinutes]);
 
   const handleStart = () => {
     if (!focusTarget) return;
@@ -187,12 +246,39 @@ const PomodoroTimer: React.FC = () => {
 
   const handlePause = () => setIsRunning(false);
 
+  const handleStartBreak = (minutes: number) => {
+    setIsRunning(false);
+    setOnBreak(true);
+    setBreakDurationMinutes(minutes);
+    setBreakStartedAt(new Date().toISOString());
+    setBreakSecondsLeft(minutes * 60);
+    setShowBreakDialog(false);
+  };
+
+  const handleEndBreakEarly = () => {
+    setOnBreak(false);
+    setBreakStartedAt(null);
+    setBreakSecondsLeft(0);
+    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
+    // Auto-resume study
+    if (startedAt) {
+      const now = new Date();
+      const adjustedStart = new Date(now.getTime() - (durationMinutes * 60 - secondsLeft) * 1000);
+      setStartedAt(adjustedStart.toISOString());
+      setIsRunning(true);
+    }
+  };
+
   const handleReset = () => {
     setIsRunning(false);
+    setOnBreak(false);
+    setBreakStartedAt(null);
+    setBreakSecondsLeft(0);
     setSecondsLeft(durationMinutes * 60);
     setStartedAt(null);
     clearTimerState();
     if (intervalRef.current) clearInterval(intervalRef.current);
+    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
   };
 
   const [durationInput, setDurationInput] = useState(String(durationMinutes));
@@ -344,74 +430,102 @@ const PomodoroTimer: React.FC = () => {
         </Tabs>
 
         {/* Timer Display */}
-        <div className="relative inline-flex items-center justify-center">
-          <svg className="w-56 h-56 -rotate-90">
-            <circle cx="112" cy="112" r="100" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
-            <circle
-              cx="112" cy="112" r="100" fill="none"
-              stroke={selectedSubject ? SUBJECT_COLOR_MAP[selectedSubject.color] : 'hsl(var(--primary))'}
-              strokeWidth="6" strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 100}
-              strokeDashoffset={2 * Math.PI * 100 * (1 - progress / 100)}
-              className="transition-all duration-1000"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="timer-display">{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</span>
-            {focusLabel && (
-              <span className="text-sm text-muted-foreground mt-1 max-w-[160px] truncate">{focusLabel}</span>
-            )}
+        {onBreak ? (
+          /* Break countdown display */
+          <div className="relative inline-flex items-center justify-center">
+            <svg className="w-56 h-56 -rotate-90">
+              <circle cx="112" cy="112" r="100" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+              <circle
+                cx="112" cy="112" r="100" fill="none"
+                stroke="hsl(var(--accent))"
+                strokeWidth="6" strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 100}
+                strokeDashoffset={2 * Math.PI * 100 * (1 - (breakDurationMinutes * 60 - breakSecondsLeft) / (breakDurationMinutes * 60))}
+                className="transition-all duration-1000"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <Coffee className="h-5 w-5 text-muted-foreground mb-1" />
+              <span className="timer-display">{String(Math.floor(breakSecondsLeft / 60)).padStart(2, '0')}:{String(breakSecondsLeft % 60).padStart(2, '0')}</span>
+              <span className="text-sm text-muted-foreground mt-1">Break</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="relative inline-flex items-center justify-center">
+            <svg className="w-56 h-56 -rotate-90">
+              <circle cx="112" cy="112" r="100" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+              <circle
+                cx="112" cy="112" r="100" fill="none"
+                stroke={selectedSubject ? SUBJECT_COLOR_MAP[selectedSubject.color] : 'hsl(var(--primary))'}
+                strokeWidth="6" strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 100}
+                strokeDashoffset={2 * Math.PI * 100 * (1 - progress / 100)}
+                className="transition-all duration-1000"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="timer-display">{String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}</span>
+              {focusLabel && (
+                <span className="text-sm text-muted-foreground mt-1 max-w-[160px] truncate">{focusLabel}</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Duration Presets & Input */}
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            {[15, 25, 45, 60].map(preset => (
-              <Button
-                key={preset}
-                variant={durationMinutes === preset && !isRunning && !startedAt ? 'default' : 'outline'}
-                size="sm"
-                className="h-8 px-3 text-xs font-mono"
-                disabled={isRunning || !!startedAt}
-                onClick={() => {
-                  setDurationMinutes(preset);
-                  setDurationInput(String(preset));
-                  setSecondsLeft(preset * 60);
-                }}
-              >
-                {preset}m
-              </Button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={1}
-                max={120}
-                value={durationInput}
-                onChange={e => handleDurationInputChange(e.target.value)}
-                onBlur={handleDurationBlur}
-                className="w-14 text-center font-mono border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0"
-                disabled={isRunning || !!startedAt}
-              />
-              <span className="text-sm text-muted-foreground">min</span>
+        {!onBreak && (
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              {[15, 25, 45, 60].map(preset => (
+                <Button
+                  key={preset}
+                  variant={durationMinutes === preset && !isRunning && !startedAt ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 px-3 text-xs font-mono"
+                  disabled={isRunning || !!startedAt}
+                  onClick={() => {
+                    setDurationMinutes(preset);
+                    setDurationInput(String(preset));
+                    setSecondsLeft(preset * 60);
+                  }}
+                >
+                  {preset}m
+                </Button>
+              ))}
             </div>
-            {'Notification' in window && Notification.permission !== 'granted' && (
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={requestNotificationPermission}>
-                <Bell className="h-3.5 w-3.5" /> Enable alerts
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min={1}
+                  max={120}
+                  value={durationInput}
+                  onChange={e => handleDurationInputChange(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  className="w-14 text-center font-mono border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0"
+                  disabled={isRunning || !!startedAt}
+                />
+                <span className="text-sm text-muted-foreground">min</span>
+              </div>
+              {'Notification' in window && Notification.permission !== 'granted' && (
+                <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={requestNotificationPermission}>
+                  <Bell className="h-3.5 w-3.5" /> Enable alerts
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-3">
-          {!isRunning ? (
+          {onBreak ? (
+            <Button onClick={handleEndBreakEarly} size="lg" className="gap-2">
+              <Play className="h-4 w-4" /> End Break & Resume
+            </Button>
+          ) : !isRunning ? (
             <Button onClick={handleStart} disabled={!focusTarget} size="lg" className="gap-2">
               <Play className="h-4 w-4" /> {startedAt ? 'Resume' : 'Start'}
             </Button>
@@ -420,15 +534,27 @@ const PomodoroTimer: React.FC = () => {
               <Button onClick={handlePause} variant="secondary" size="lg" className="gap-2">
                 <Pause className="h-4 w-4" /> Pause
               </Button>
-              <Button onClick={handlePause} variant="outline" size="lg" className="gap-2">
-                <Coffee className="h-4 w-4" /> Break
-              </Button>
+              <Dialog open={showBreakDialog} onOpenChange={setShowBreakDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="lg" className="gap-2">
+                    <Coffee className="h-4 w-4" /> Break
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xs">
+                  <DialogHeader><DialogTitle className="flex items-center gap-2"><Coffee className="h-5 w-5" /> Take a Break</DialogTitle></DialogHeader>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Study will auto-resume after your break ends.</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[3, 5, 10].map(m => (
+                        <Button key={m} variant="outline" className="h-12 text-lg font-mono" onClick={() => handleStartBreak(m)}>
+                          {m}m
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </>
-          )}
-          {!isRunning && startedAt && (
-            <Button onClick={handlePause} variant="outline" size="lg" className="gap-2 border-dashed">
-              <Coffee className="h-4 w-4" /> On Break
-            </Button>
           )}
           <Button onClick={handleReset} variant="outline" size="lg" className="gap-2">
             <RotateCcw className="h-4 w-4" /> Reset
