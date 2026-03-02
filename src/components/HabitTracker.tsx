@@ -27,6 +27,7 @@ const HabitTracker: React.FC = () => {
   const [entryValue, setEntryValue] = useState('');
   const [entryNote, setEntryNote] = useState('');
   const [calMonth, setCalMonth] = useState(new Date());
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -66,6 +67,7 @@ const HabitTracker: React.FC = () => {
   };
 
   const handleGridLog = (habitId: string, date: string, value: number, note?: string) => {
+    if (date !== todayStr) return; // only allow logging for today
     addHabitLog({ habit_id: habitId, value, date, note });
   };
 
@@ -286,6 +288,7 @@ const HabitTracker: React.FC = () => {
                     {Array.from({ length: calStartDay }).map((_, i) => <div key={`e-${i}`} />)}
                     {calDayData.map(({ day, dateStr, completed }) => {
                       const isToday = dateStr === todayStr;
+                      const isSelected = dateStr === selectedCalDate;
                       const total = habits.length;
                       const ratio = total > 0 ? completed / total : 0;
                       let bg = 'bg-muted/40';
@@ -294,15 +297,17 @@ const HabitTracker: React.FC = () => {
                       else if (ratio >= 1) bg = 'bg-[hsl(142,60%,38%)] dark:bg-[hsl(142,60%,48%)]';
 
                       return (
-                        <div
+                        <button
                           key={dateStr}
+                          type="button"
+                          onClick={() => setSelectedCalDate(dateStr === selectedCalDate ? null : dateStr)}
                           title={`${format(day, 'MMM d')}: ${completed}/${total} habits`}
-                          className={`h-7 w-full rounded flex items-center justify-center text-[10px] transition-colors ${bg} ${isToday ? 'ring-1 ring-primary ring-offset-1 ring-offset-background font-bold' : ''}`}
+                          className={`h-7 w-full rounded flex items-center justify-center text-[10px] transition-colors cursor-pointer ${bg} ${isToday ? 'ring-1 ring-primary ring-offset-1 ring-offset-background font-bold' : ''} ${isSelected ? 'ring-2 ring-accent-foreground ring-offset-1 ring-offset-background' : ''}`}
                         >
                           <span className={completed > 0 ? 'text-white dark:text-foreground font-medium' : 'text-muted-foreground'}>
                             {format(day, 'd')}
                           </span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -338,6 +343,37 @@ const HabitTracker: React.FC = () => {
                     })}
                   </div>
                 </Card>
+
+                {/* Selected date detail */}
+                {selectedCalDate && (
+                  <Card className="p-3">
+                    <h4 className="text-xs font-medium mb-2 text-muted-foreground">
+                      {format(new Date(selectedCalDate + 'T00:00:00'), 'EEEE, MMM d, yyyy')}
+                    </h4>
+                    <div className="space-y-1.5">
+                      {habits.map(h => {
+                        const Icon = getHabitIcon(h.icon);
+                        const log = habitLogs.find(l => l.habit_id === h.id && l.date === selectedCalDate);
+                        return (
+                          <div key={h.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <Icon className="h-3.5 w-3.5" style={{ color: getColorHex(h.color) }} />
+                              <span className="truncate max-w-[120px]">{h.name}</span>
+                            </div>
+                            {log ? (
+                              <div className="flex items-center gap-1 text-success">
+                                <Check className="h-3 w-3" />
+                                <span className="font-mono">{log.value > 1 ? log.value : ''}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+                )}
               </div>
             )}
           </div>

@@ -40,8 +40,11 @@ const HabitGridView: React.FC<HabitGridViewProps> = ({ habits, habitLogs, onLog,
   const getLog = (habitId: string, dateStr: string) =>
     habitLogs.find(l => l.habit_id === habitId && l.date === dateStr);
 
+  const todayStr = format(startOfDay(new Date()), 'yyyy-MM-dd');
+
   const handleToggle = (habit: Habit, dateStr: string) => {
-    if (isLogged(habit.id, dateStr)) return; // already logged
+    if (dateStr !== todayStr) return; // only allow logging for today
+    if (isLogged(habit.id, dateStr)) return;
     if (habit.metric_type === 'binary') {
       onLog(habit.id, dateStr, 1);
     } else {
@@ -117,12 +120,14 @@ const HabitGridView: React.FC<HabitGridViewProps> = ({ habits, habitLogs, onLog,
                               <span className="text-[10px] text-muted-foreground ml-1">{log.value}</span>
                             )}
                           </div>
-                        ) : (
+                        ) : dateStr === todayStr ? (
                           <button
                             onClick={() => handleToggle(habit, dateStr)}
                             className="h-6 w-6 rounded border border-muted-foreground/30 hover:border-primary/50 hover:bg-accent/50 transition-colors mx-auto flex items-center justify-center"
                           >
                           </button>
+                        ) : (
+                          <div className="h-6 w-6 rounded border border-dashed border-muted-foreground/15 mx-auto flex items-center justify-center opacity-40" />
                         )}
                       </td>
                     );
