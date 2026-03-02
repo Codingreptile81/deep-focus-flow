@@ -24,7 +24,7 @@ const PlannerPage: React.FC = () => {
           <PlannerView tasks={tasks} subjects={subjects} habits={habits} habitLogs={habitLogs} onAddTask={addTask} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
         </TabsContent>
         <TabsContent value="kanban">
-          <KanbanBoard tasks={tasks} subjects={subjects} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
+          <KanbanBoard tasks={tasks} subjects={subjects} onUpdateTask={updateTask} onDeleteTask={deleteTask} onAddTask={addTask} />
         </TabsContent>
       </Tabs>
     </div>

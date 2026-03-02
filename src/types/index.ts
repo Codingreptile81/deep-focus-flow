@@ -19,6 +19,7 @@ export interface Task {
   subject_id?: string;
   estimate_minutes?: number;
   actual_minutes: number;
+  parent_task_id?: string;
   created_at: string;
 }
 export type MetricType = 'binary' | 'count' | 'minutes';

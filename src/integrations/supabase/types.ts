@@ -208,6 +208,7 @@ export type Database = {
           end_time: string | null
           estimate_minutes: number | null
           id: string
+          parent_task_id: string | null
           position: number
           priority: string
           recurrence: string | null
@@ -226,6 +227,7 @@ export type Database = {
           end_time?: string | null
           estimate_minutes?: number | null
           id?: string
+          parent_task_id?: string | null
           position?: number
           priority?: string
           recurrence?: string | null
@@ -244,6 +246,7 @@ export type Database = {
           end_time?: string | null
           estimate_minutes?: number | null
           id?: string
+          parent_task_id?: string | null
           position?: number
           priority?: string
           recurrence?: string | null
@@ -255,6 +258,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_subject_id_fkey"
             columns: ["subject_id"]

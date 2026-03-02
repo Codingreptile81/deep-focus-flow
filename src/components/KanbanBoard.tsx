@@ -14,9 +14,10 @@ interface KanbanBoardProps {
   subjects: Subject[];
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
+  onAddTask?: (task: { title: string; priority: any; parent_task_id?: string; scheduled_date?: string; subject_id?: string }) => void;
 }
 
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask, onDeleteTask }) => {
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask, onDeleteTask, onAddTask }) => {
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const taskId = result.draggableId;
@@ -32,7 +33,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map(col => {
-          const colTasks = tasks.filter(t => t.status === col.status).sort((a, b) => a.position - b.position);
+          // Only show parent tasks in columns; sub-tasks render inside parent
+          const colTasks = tasks.filter(t => t.status === col.status && !t.parent_task_id).sort((a, b) => a.position - b.position);
           return (
             <div key={col.status} className="space-y-3">
               <div className="flex items-center justify-between">
@@ -55,7 +57,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask
                       <Draggable key={task.id} draggableId={task.id} index={index}>
                         {(dragProvided, dragSnapshot) => (
                           <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps}>
-                            <TaskCard task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} isDragging={dragSnapshot.isDragging} />
+                            <TaskCard task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} isDragging={dragSnapshot.isDragging} />
                           </div>
                         )}
                       </Draggable>

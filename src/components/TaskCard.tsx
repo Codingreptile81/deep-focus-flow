@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Task, TaskStatus, Subject, SUBJECT_COLOR_MAP } from '@/types';
+import { Task, TaskStatus, TaskPriority, Subject, SUBJECT_COLOR_MAP } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, ChevronDown, ChevronUp, ListTree } from 'lucide-react';
 import { formatMinutes } from '@/lib/analytics';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const PRIORITY_COLORS: Record<string, { border: string; badge: string }> = {
-  high: { border: 'border-l-4 border-l-[hsl(0,72%,51%)]', badge: 'bg-[hsl(0,72%,51%)] text-white' },
+  high: { border: 'border-l-4 border-l-destructive', badge: 'bg-destructive text-destructive-foreground' },
   medium: { border: 'border-l-4 border-l-[hsl(45,93%,47%)]', badge: 'bg-[hsl(45,93%,47%)] text-white' },
   low: { border: 'border-l-4 border-l-[hsl(160,60%,45%)]', badge: 'bg-[hsl(160,60%,45%)] text-white' },
 };
@@ -24,13 +24,16 @@ const STATUS_LABELS: Record<TaskStatus, string> = { todo: 'To Do', in_progress: 
 interface TaskCardProps {
   task: Task;
   subjects?: Subject[];
+  allTasks?: Task[];
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
+  onAddTask?: (task: { title: string; priority: TaskPriority; parent_task_id?: string; scheduled_date?: string; subject_id?: string }) => void;
   showMoveButtons?: boolean;
   isDragging?: boolean;
+  isSubTask?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, onDeleteTask, showMoveButtons = true, isDragging = false }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [], onUpdateTask, onDeleteTask, onAddTask, showMoveButtons = true, isDragging = false, isSubTask = false }) => {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
@@ -38,11 +41,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
   const [editEstimate, setEditEstimate] = useState(task.estimate_minutes?.toString() || '');
   const [editPriority, setEditPriority] = useState(task.priority);
   const [editDeadline, setEditDeadline] = useState<Date | undefined>(task.deadline ? parseISO(task.deadline) : undefined);
+  const [showSubTasks, setShowSubTasks] = useState(true);
+  const [addingSubTask, setAddingSubTask] = useState(false);
+  const [subTaskTitle, setSubTaskTitle] = useState('');
+
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
   const canMoveRight = currentIdx < STATUS_ORDER.length - 1;
   const colors = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
   const linkedSubject = task.subject_id ? subjects.find(s => s.id === task.subject_id) : null;
+  const subTasks = allTasks.filter(t => t.parent_task_id === task.id);
+  const completedSubTasks = subTasks.filter(t => t.status === 'done').length;
 
   const deadlineOrScheduled = task.deadline || task.scheduled_date;
   const isOverdue = task.status !== 'done' && deadlineOrScheduled && isBefore(parseISO(deadlineOrScheduled), startOfDay(new Date()));
@@ -54,6 +63,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
 
   const startEdit = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest('input')) return;
     setEditing(true);
     setEditTitle(task.title);
     setEditDescription(task.description || '');
@@ -78,6 +88,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
   };
 
   const cancelEdit = () => setEditing(false);
+
+  const handleAddSubTask = () => {
+    if (!subTaskTitle.trim() || !onAddTask) return;
+    onAddTask({
+      title: subTaskTitle.trim(),
+      priority: task.priority,
+      parent_task_id: task.id,
+      scheduled_date: task.scheduled_date,
+      subject_id: task.subject_id,
+    });
+    setSubTaskTitle('');
+    setAddingSubTask(false);
+  };
 
   if (editing) {
     return (
@@ -134,74 +157,132 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], onUpdateTask, 
   }
 
   return (
-    <Card
-      className={`group cursor-pointer ${colors.border} ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''} ${isOverdue ? 'ring-1 ring-[hsl(0,72%,51%)]/40' : ''} transition-all`}
-      onClick={startEdit}
-    >
-      <CardContent className="p-3 space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            {isOverdue && <AlertTriangle className="h-3.5 w-3.5 text-[hsl(0,72%,51%)] shrink-0" />}
-            <p className={`text-sm font-medium leading-tight ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
-              {task.title}
-            </p>
+    <div className={isSubTask ? 'ml-4 border-l-2 border-muted pl-2' : ''}>
+      <Card
+        className={`group cursor-pointer ${colors.border} ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''} ${isOverdue ? 'ring-1 ring-destructive/40' : ''} transition-all`}
+        onClick={startEdit}
+      >
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {isOverdue && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+              <p className={`text-sm font-medium leading-tight ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
+                {task.title}
+              </p>
+            </div>
+            <Badge className={`shrink-0 text-[10px] border-0 ${colors.badge}`}>
+              {task.priority}
+            </Badge>
           </div>
-          <Badge className={`shrink-0 text-[10px] border-0 ${colors.badge}`}>
-            {task.priority}
-          </Badge>
-        </div>
-        {task.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
-        )}
-        <div className="flex items-center gap-2 flex-wrap">
-          {linkedSubject && (
-            <div className="flex items-center gap-1 text-xs">
-              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[linkedSubject.color] }} />
-              <span className="text-muted-foreground">{linkedSubject.name}</span>
-            </div>
+          {task.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
           )}
-          {(task.deadline || task.scheduled_date) && (
-            <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-              <Clock className="h-3 w-3" />
-              <span>{task.deadline ? `Due ${format(parseISO(task.deadline), 'MMM d')}` : format(parseISO(task.scheduled_date!), 'MMM d')}</span>
-              {isOverdue && <span className="text-[10px]">(overdue)</span>}
-            </div>
-          )}
-          {(task.start_time || task.end_time) && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
-            </div>
-          )}
-          {task.recurrence && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Repeat className="h-3 w-3" />
-              <span>{task.recurrence}</span>
-            </div>
-          )}
-          {(task.estimate_minutes || task.actual_minutes > 0) && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Timer className="h-3 w-3" />
-              <span>{formatMinutes(task.actual_minutes)}{task.estimate_minutes ? ` / ${formatMinutes(task.estimate_minutes)}` : ''}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center justify-between pt-1">
-          {showMoveButtons ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            {linkedSubject && (
+              <div className="flex items-center gap-1 text-xs">
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[linkedSubject.color] }} />
+                <span className="text-muted-foreground">{linkedSubject.name}</span>
+              </div>
+            )}
+            {(task.deadline || task.scheduled_date) && (
+              <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                <Clock className="h-3 w-3" />
+                <span>{task.deadline ? `Due ${format(parseISO(task.deadline), 'MMM d')}` : format(parseISO(task.scheduled_date!), 'MMM d')}</span>
+                {isOverdue && <span className="text-[10px]">(overdue)</span>}
+              </div>
+            )}
+            {(task.start_time || task.end_time) && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
+              </div>
+            )}
+            {task.recurrence && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Repeat className="h-3 w-3" />
+                <span>{task.recurrence}</span>
+              </div>
+            )}
+            {(task.estimate_minutes || task.actual_minutes > 0) && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Timer className="h-3 w-3" />
+                <span>{formatMinutes(task.actual_minutes)}{task.estimate_minutes ? ` / ${formatMinutes(task.estimate_minutes)}` : ''}</span>
+              </div>
+            )}
+            {subTasks.length > 0 && !isSubTask && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ListTree className="h-3 w-3" />
+                <span>{completedSubTasks}/{subTasks.length}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between pt-1">
             <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveLeft} onClick={() => moveStatus(-1)} title={canMoveLeft ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx - 1]]}` : undefined}>
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveRight} onClick={() => moveStatus(1)} title={canMoveRight ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx + 1]]}` : undefined}>
-                <ChevronRight className="h-3 w-3" />
-              </Button>
+              {showMoveButtons && (
+                <>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveLeft} onClick={() => moveStatus(-1)} title={canMoveLeft ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx - 1]]}` : undefined}>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveRight} onClick={() => moveStatus(1)} title={canMoveRight ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx + 1]]}` : undefined}>
+                    <ChevronRight className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
+              {!isSubTask && onAddTask && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setAddingSubTask(true)} title="Add sub-task">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              )}
+              {subTasks.length > 0 && !isSubTask && (
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setShowSubTasks(!showSubTasks)}>
+                  {showSubTasks ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </Button>
+              )}
             </div>
-          ) : <div />}
-          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTask(task.id)}>
-            <Trash2 className="h-3 w-3" />
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTask(task.id)}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sub-task inline add */}
+      {addingSubTask && !isSubTask && (
+        <div className="ml-4 mt-1 border-l-2 border-muted pl-2 flex gap-1">
+          <Input
+            className="h-7 text-xs flex-1"
+            placeholder="Sub-task title"
+            value={subTaskTitle}
+            onChange={e => setSubTaskTitle(e.target.value)}
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') handleAddSubTask(); if (e.key === 'Escape') setAddingSubTask(false); }}
+          />
+          <Button size="sm" className="h-7 text-xs px-2" onClick={handleAddSubTask} disabled={!subTaskTitle.trim()}>
+            <Plus className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setAddingSubTask(false)}>
+            <X className="h-3 w-3" />
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Sub-tasks list */}
+      {showSubTasks && subTasks.length > 0 && !isSubTask && (
+        <div className="mt-1 space-y-1">
+          {subTasks.map(st => (
+            <TaskCard
+              key={st.id}
+              task={st}
+              subjects={subjects}
+              allTasks={allTasks}
+              onUpdateTask={onUpdateTask}
+              onDeleteTask={onDeleteTask}
+              showMoveButtons={showMoveButtons}
+              isSubTask={true}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
