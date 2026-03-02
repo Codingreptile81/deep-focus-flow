@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Task, TaskPriority, TaskRecurrence, Subject, Habit, HabitLog, SUBJECT_COLOR_MAP } from '@/types';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, CalendarIcon } from 'lucide-react';
+import { Plus, CalendarIcon, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import TaskCard from '@/components/TaskCard';
@@ -80,33 +81,46 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
       }
     });
 
+    const GroupSection: React.FC<{ groupTasks: Task[]; label: string; color: string }> = ({ groupTasks, label, color }) => {
+      const [open, setOpen] = useState(false);
+      return (
+        <div className="rounded-lg border bg-card">
+          <button
+            onClick={() => setOpen(!open)}
+            className="flex items-center gap-2 w-full py-2 px-3 hover:bg-muted/60 transition-colors text-left"
+          >
+            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
+            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <span className="text-sm font-semibold">{label}</span>
+            <span className="text-xs text-muted-foreground">({groupTasks.length})</span>
+          </button>
+          {!open && (
+            <div className="px-8 pb-2 space-y-0.5">
+              {groupTasks.map(task => (
+                <p key={task.id} className={`text-xs truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                  • {task.title}
+                </p>
+              ))}
+            </div>
+          )}
+          {open && (
+            <div className="space-y-2 px-3 pb-3">
+              {groupTasks.map(task => (
+                <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {Array.from(grouped.entries()).map(([subjectId, sTasks]) => {
           const subject = subjects.find(s => s.id === subjectId);
-          return (
-            <div key={subjectId} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[subject?.color || 'subject-blue'] }} />
-                <h4 className="text-sm font-semibold">{subject?.name || 'Unknown'}</h4>
-                <span className="text-xs text-muted-foreground">({sTasks.length})</span>
-              </div>
-              <div className="space-y-2">
-                {sTasks.map(task => (
-                  <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
-                ))}
-              </div>
-            </div>
-          );
+          return <GroupSection key={subjectId} groupTasks={sTasks} label={subject?.name || 'Unknown'} color={SUBJECT_COLOR_MAP[subject?.color || 'subject-blue']} />;
         })}
-        {ungrouped.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-muted-foreground">Untitled</h4>
-            {ungrouped.map(task => (
-              <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
-            ))}
-          </div>
-        )}
+        {ungrouped.length > 0 && <GroupSection groupTasks={ungrouped} label="Untitled" color="hsl(var(--muted-foreground))" />}
       </div>
     );
   };
