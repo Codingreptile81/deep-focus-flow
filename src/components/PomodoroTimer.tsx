@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppState } from '@/contexts/AppContext';
 import { SUBJECT_COLORS, SUBJECT_COLOR_MAP } from '@/types';
-import { getSubjectTotalMinutes, getSubjectTodayMinutes, formatMinutes, getSubjectLevel } from '@/lib/analytics';
+import { getSubjectTotalMinutes, getSubjectTodayMinutes, formatMinutes, getSubjectLevel, getSessionStreak } from '@/lib/analytics';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee, Flame, Trophy } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 
@@ -561,6 +561,33 @@ const PomodoroTimer: React.FC = () => {
           </Button>
         </div>
       </Card>
+
+      {/* Session Streak */}
+      {(() => {
+        const { current, longest } = getSessionStreak(sessionLogs);
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <Flame className="h-5 w-5 text-orange-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-tight">{current}</div>
+                <div className="text-xs text-muted-foreground">Day streak</div>
+              </div>
+            </Card>
+            <Card className="p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Trophy className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-tight">{longest}</div>
+                <div className="text-xs text-muted-foreground">Best streak</div>
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Today's Sessions */}
       <Card className="p-6">
