@@ -44,7 +44,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop: hover trigger zone + navbar */}
-      <div className="hidden md:block fixed top-0 left-0 right-0 z-50 group">
+      <div className="hidden lg:block fixed top-0 left-0 right-0 z-50 group">
         {/* Thin accent line indicator */}
         <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent group-hover:opacity-0 transition-opacity duration-300" />
         {/* Invisible hover zone */}
@@ -99,7 +99,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
 
       {/* Mobile header */}
-      <header className="md:hidden sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
+      <header className="lg:hidden sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="container flex h-12 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
