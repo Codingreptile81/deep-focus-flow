@@ -83,28 +83,51 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
 
     const GroupSection: React.FC<{ groupTasks: Task[]; label: string; color: string }> = ({ groupTasks, label, color }) => {
       const [open, setOpen] = useState(false);
+      const doneCount = groupTasks.filter(t => t.status === 'done').length;
+      const progress = groupTasks.length > 0 ? Math.round((doneCount / groupTasks.length) * 100) : 0;
+
       return (
-        <div className="rounded-lg border bg-card">
+        <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+          {/* Header with subject color accent */}
           <button
             onClick={() => setOpen(!open)}
-            className="flex items-center gap-2 w-full py-2 px-3 hover:bg-muted/60 transition-colors text-left"
+            className="flex items-center gap-3 w-full py-3 px-4 hover:bg-accent/40 transition-colors text-left"
           >
-            <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? 'rotate-90' : ''}`} />
-            <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
-            <span className="text-sm font-semibold">{label}</span>
-            <span className="text-xs text-muted-foreground">({groupTasks.length})</span>
+            <div className="h-8 w-1 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{label}</span>
+                <span className="text-xs text-muted-foreground">{doneCount}/{groupTasks.length} done</span>
+              </div>
+              {/* Mini progress bar */}
+              <div className="h-1 w-full bg-muted rounded-full mt-1.5 max-w-[200px]">
+                <div
+                  className="h-1 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%`, backgroundColor: color }}
+                />
+              </div>
+            </div>
           </button>
+
+          {/* Collapsed: compact title list */}
           {!open && (
-            <div className="px-8 pb-2 space-y-0.5">
+            <div className="px-4 pb-3 pl-[3.25rem] space-y-1">
               {groupTasks.map(task => (
-                <p key={task.id} className={`text-xs truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                  • {task.title}
-                </p>
+                <div key={task.id} className="flex items-center gap-2">
+                  <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${task.status === 'done' ? 'bg-muted-foreground/40' : ''}`} style={task.status !== 'done' ? { backgroundColor: color } : {}} />
+                  <span className={`text-xs truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground/80'}`}>
+                    {task.title}
+                  </span>
+                  {task.priority === 'high' && <span className="text-[10px] text-destructive font-medium">!</span>}
+                </div>
               ))}
             </div>
           )}
+
+          {/* Expanded: full task cards */}
           {open && (
-            <div className="space-y-2 px-3 pb-3">
+            <div className="space-y-2 px-4 pb-4 pt-1 border-t border-border/50">
               {groupTasks.map(task => (
                 <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
               ))}
