@@ -101,7 +101,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
         })}
         {ungrouped.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-muted-foreground">No Subject</h4>
+            <h4 className="text-sm font-semibold text-muted-foreground">Untitled</h4>
             {ungrouped.map(task => (
               <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
             ))}
@@ -159,7 +159,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
               <Select value={subjectId} onValueChange={setSubjectId}>
                 <SelectTrigger><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No subject</SelectItem>
+                  <SelectItem value="none">Untitled</SelectItem>
                   {subjects.map(s => (
                     <SelectItem key={s.id} value={s.id}>
                       <div className="flex items-center gap-2">
