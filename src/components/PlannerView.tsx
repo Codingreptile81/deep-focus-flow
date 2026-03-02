@@ -332,10 +332,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
                     onChange={e => setNewSubjectName(e.target.value)}
                     className="h-9 text-sm flex-1"
                     autoFocus
-                    onKeyDown={e => {
+                    onKeyDown={async e => {
                       if (e.key === 'Enter' && newSubjectName.trim()) {
                         const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
-                        addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                        const newSub = await addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                        if (newSub) setSubjectId(newSub.id);
                         setNewSubjectName('');
                         setAddingNewSubject(false);
                       }
@@ -346,9 +347,10 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
                     size="sm"
                     className="h-9 px-3"
                     disabled={!newSubjectName.trim()}
-                    onClick={() => {
+                    onClick={async () => {
                       const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
-                      addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      const newSub = await addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      if (newSub) setSubjectId(newSub.id);
                       setNewSubjectName('');
                       setAddingNewSubject(false);
                     }}

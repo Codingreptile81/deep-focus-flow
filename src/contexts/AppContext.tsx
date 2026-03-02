@@ -10,7 +10,7 @@ interface AppState {
   habitLogs: HabitLog[];
   tasks: Task[];
   loading: boolean;
-  addSubject: (subject: Omit<Subject, 'id' | 'created_at'>) => Promise<void>;
+  addSubject: (subject: Omit<Subject, 'id' | 'created_at'>) => Promise<Subject | undefined>;
   addHabit: (habit: Omit<Habit, 'id' | 'created_at'>) => Promise<void>;
   updateHabit: (habit: Habit) => Promise<void>;
   addSessionLog: (log: Omit<SessionLog, 'id'>) => Promise<void>;
@@ -64,13 +64,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchAll();
   }, [user]);
 
-  const addSubject = useCallback(async (s: Omit<Subject, 'id' | 'created_at'>) => {
-    if (!user) return;
+  const addSubject = useCallback(async (s: Omit<Subject, 'id' | 'created_at'>): Promise<Subject | undefined> => {
+    if (!user) return undefined;
     const { data, error } = await supabase.from('subjects').insert({ ...s, user_id: user.id } as any).select().single();
     if (data && !error) {
       const r = data as any;
-      setSubjects(prev => [...prev, { id: r.id, name: r.name, category: r.category, goal_hours: r.goal_hours ? Number(r.goal_hours) : undefined, color: r.color, created_at: r.created_at }]);
+      const newSubject: Subject = { id: r.id, name: r.name, category: r.category, goal_hours: r.goal_hours ? Number(r.goal_hours) : undefined, color: r.color, created_at: r.created_at };
+      setSubjects(prev => [...prev, newSubject]);
+      return newSubject;
     }
+    return undefined;
   }, [user]);
 
   const addHabit = useCallback(async (h: Omit<Habit, 'id' | 'created_at'>) => {
