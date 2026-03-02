@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee } from 'lucide-react';
 import { format } from 'date-fns';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
@@ -416,8 +416,18 @@ const PomodoroTimer: React.FC = () => {
               <Play className="h-4 w-4" /> {startedAt ? 'Resume' : 'Start'}
             </Button>
           ) : (
-            <Button onClick={handlePause} variant="secondary" size="lg" className="gap-2">
-              <Pause className="h-4 w-4" /> Pause
+            <>
+              <Button onClick={handlePause} variant="secondary" size="lg" className="gap-2">
+                <Pause className="h-4 w-4" /> Pause
+              </Button>
+              <Button onClick={handlePause} variant="outline" size="lg" className="gap-2">
+                <Coffee className="h-4 w-4" /> Break
+              </Button>
+            </>
+          )}
+          {!isRunning && startedAt && (
+            <Button onClick={handlePause} variant="outline" size="lg" className="gap-2 border-dashed">
+              <Coffee className="h-4 w-4" /> On Break
             </Button>
           )}
           <Button onClick={handleReset} variant="outline" size="lg" className="gap-2">
