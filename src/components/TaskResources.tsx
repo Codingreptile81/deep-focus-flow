@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Link as LinkIcon, Type, Plus, Trash2, ExternalLink, X, Loader2 } from 'lucide-react';
+import { FileText, Link as LinkIcon, Type, Plus, Trash2, ExternalLink, X, Loader2, Upload, Download } from 'lucide-react';
 
 interface TaskResource {
   id: string;
@@ -40,11 +40,13 @@ const TaskResources: React.FC<TaskResourcesProps> = ({ taskId }) => {
   const [newType, setNewType] = useState<'text' | 'link' | 'file'>('text');
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
-    const fetch = async () => {
+    const fetchResources = async () => {
       setLoading(true);
       const { data } = await supabase
         .from('task_resources')
@@ -54,32 +56,76 @@ const TaskResources: React.FC<TaskResourcesProps> = ({ taskId }) => {
       setResources((data as any[])?.map(r => ({ ...r, type: r.type as 'text' | 'link' | 'file' })) || []);
       setLoading(false);
     };
-    fetch();
+    fetchResources();
   }, [taskId, user]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (!newTitle.trim()) setNewTitle(file.name);
+    }
+  };
 
   const handleAdd = async () => {
     if (!user || !newTitle.trim()) return;
+    if (newType === 'file' && !selectedFile) return;
+
     setSaving(true);
+
+    let fileUrl: string | null = null;
+    let fileName: string | null = null;
+
+    if (newType === 'file' && selectedFile) {
+      const ext = selectedFile.name.split('.').pop();
+      const filePath = `${user.id}/${taskId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('task-resources')
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        setSaving(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from('task-resources').getPublicUrl(filePath);
+      fileUrl = urlData.publicUrl;
+      fileName = selectedFile.name;
+    }
+
     const insertData: any = {
       task_id: taskId,
       user_id: user.id,
       type: newType,
       title: newTitle.trim(),
-      content: newContent.trim() || null,
+      content: newType !== 'file' ? (newContent.trim() || null) : null,
+      file_url: fileUrl,
+      file_name: fileName,
     };
+
     const { data, error } = await supabase.from('task_resources').insert(insertData).select().single();
     if (data && !error) {
       setResources(prev => [...prev, { ...(data as any), type: (data as any).type as 'text' | 'link' | 'file' }]);
       setNewTitle('');
       setNewContent('');
+      setSelectedFile(null);
       setAdding(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('task_resources').delete().eq('id', id);
-    setResources(prev => prev.filter(r => r.id !== id));
+  const handleDelete = async (resource: TaskResource) => {
+    // Delete file from storage if it's a file resource
+    if (resource.type === 'file' && resource.file_url) {
+      const url = new URL(resource.file_url);
+      const pathParts = url.pathname.split('/task-resources/');
+      if (pathParts[1]) {
+        await supabase.storage.from('task-resources').remove([decodeURIComponent(pathParts[1])]);
+      }
+    }
+    await supabase.from('task_resources').delete().eq('id', resource.id);
+    setResources(prev => prev.filter(r => r.id !== resource.id));
   };
 
   if (loading) {
@@ -118,15 +164,23 @@ const TaskResources: React.FC<TaskResourcesProps> = ({ taskId }) => {
             {r.type === 'text' && r.content && (
               <p className="text-[11px] text-muted-foreground line-clamp-3 whitespace-pre-wrap">{r.content}</p>
             )}
-            {r.type === 'file' && r.file_name && (
-              <p className="text-[11px] text-muted-foreground">{r.file_name}</p>
+            {r.type === 'file' && r.file_url && (
+              <a
+                href={r.file_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-primary hover:underline flex items-center gap-1"
+              >
+                <Download className="h-2.5 w-2.5 shrink-0" />
+                {r.file_name || 'Download'}
+              </a>
             )}
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="h-5 w-5 opacity-0 group-hover/res:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
-            onClick={() => handleDelete(r.id)}
+            onClick={() => handleDelete(r)}
           >
             <Trash2 className="h-2.5 w-2.5" />
           </Button>
@@ -135,13 +189,14 @@ const TaskResources: React.FC<TaskResourcesProps> = ({ taskId }) => {
 
       {adding ? (
         <div className="space-y-2 rounded-md border border-border p-2">
-          <Select value={newType} onValueChange={v => setNewType(v as any)}>
+          <Select value={newType} onValueChange={v => { setNewType(v as any); setSelectedFile(null); setNewContent(''); }}>
             <SelectTrigger className="h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="text">📝 Note</SelectItem>
               <SelectItem value="link">🔗 Link</SelectItem>
+              <SelectItem value="file">📎 File</SelectItem>
             </SelectContent>
           </Select>
           <Input
@@ -151,19 +206,49 @@ const TaskResources: React.FC<TaskResourcesProps> = ({ taskId }) => {
             onChange={e => setNewTitle(e.target.value)}
             autoFocus
           />
-          <Textarea
-            className="text-xs min-h-[60px]"
-            placeholder={newType === 'link' ? 'https://...' : 'Content...'}
-            value={newContent}
-            onChange={e => setNewContent(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleAdd(); }}
-          />
+          {newType === 'file' ? (
+            <div className="space-y-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs w-full gap-1.5"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-3 w-3" />
+                {selectedFile ? selectedFile.name : 'Choose file...'}
+              </Button>
+              {selectedFile && (
+                <p className="text-[10px] text-muted-foreground">
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
+              )}
+            </div>
+          ) : (
+            <Textarea
+              className="text-xs min-h-[60px]"
+              placeholder={newType === 'link' ? 'https://...' : 'Content...'}
+              value={newContent}
+              onChange={e => setNewContent(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) handleAdd(); }}
+            />
+          )}
           <div className="flex gap-1">
-            <Button size="sm" className="h-7 text-xs flex-1" onClick={handleAdd} disabled={!newTitle.trim() || saving}>
+            <Button
+              size="sm"
+              className="h-7 text-xs flex-1"
+              onClick={handleAdd}
+              disabled={!newTitle.trim() || (newType === 'file' && !selectedFile) || saving}
+            >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               Add
             </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAdding(false)}>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAdding(false); setSelectedFile(null); }}>
               <X className="h-3 w-3" />
             </Button>
           </div>

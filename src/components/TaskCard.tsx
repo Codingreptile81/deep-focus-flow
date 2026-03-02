@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Task, TaskStatus, TaskPriority, Subject, SUBJECT_COLOR_MAP } from '@/types';
+import { Task, TaskStatus, TaskPriority, Subject, SUBJECT_COLOR_MAP, SUBJECT_COLORS } from '@/types';
+import { useAppState } from '@/contexts/AppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, Pencil, ListTree, Paperclip } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, Pencil, ListTree, Paperclip, FolderPlus } from 'lucide-react';
 import TaskResources from '@/components/TaskResources';
 import { formatMinutes } from '@/lib/analytics';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
@@ -35,6 +36,7 @@ interface TaskCardProps {
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [], onUpdateTask, onDeleteTask, onAddTask, showMoveButtons = true, isDragging = false }) => {
+  const { addSubject } = useAppState();
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
@@ -45,6 +47,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
   const [addingSubTask, setAddingSubTask] = useState(false);
   const [subTaskTitle, setSubTaskTitle] = useState('');
   const [showResources, setShowResources] = useState(false);
+  const [addingNewSubject, setAddingNewSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
 
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
@@ -115,29 +119,68 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
         <CardContent className="p-3 space-y-2">
           <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Title" className="h-8 text-sm" autoFocus />
           <Input value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description" className="h-8 text-sm" />
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={editSubjectId} onValueChange={setEditSubjectId}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Untitled</SelectItem>
-                {subjects.map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[s.color] }} />
-                      {s.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={editPriority} onValueChange={v => setEditPriority(v as any)}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            {addingNewSubject ? (
+              <div className="flex gap-1 col-span-2">
+                <Input
+                  className="h-8 text-xs flex-1"
+                  placeholder="New subject name"
+                  value={newSubjectName}
+                  onChange={e => setNewSubjectName(e.target.value)}
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && newSubjectName.trim()) {
+                      const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+                      addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      setNewSubjectName('');
+                      setAddingNewSubject(false);
+                    }
+                    if (e.key === 'Escape') setAddingNewSubject(false);
+                  }}
+                />
+                <Button size="sm" className="h-8 px-2" disabled={!newSubjectName.trim()} onClick={() => {
+                  const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+                  addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                  setNewSubjectName('');
+                  setAddingNewSubject(false);
+                }}>
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setAddingNewSubject(false)}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-1">
+                  <Select value={editSubjectId} onValueChange={setEditSubjectId}>
+                    <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Subject" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Untitled</SelectItem>
+                      {subjects.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[s.color] }} />
+                            {s.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setAddingNewSubject(true)} title="Add new subject">
+                    <FolderPlus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <Select value={editPriority} onValueChange={v => setEditPriority(v as any)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
           <Input type="number" value={editEstimate} onChange={e => setEditEstimate(e.target.value)} placeholder="Estimate (min)" className="h-8 text-sm" min={1} />
           <Popover>
