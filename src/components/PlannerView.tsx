@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Task, TaskPriority, TaskRecurrence, Subject, Habit, HabitLog, SUBJECT_COLOR_MAP } from '@/types';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,47 @@ interface PlannerViewProps {
   onDeleteTask: (id: string) => void;
 }
 
+// Animated collapse/expand wrapper
+const AnimatedCollapse: React.FC<{ open: boolean; children: React.ReactNode }> = ({ open, children }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number | undefined>(open ? undefined : 0);
+  const [overflow, setOverflow] = useState(open ? 'visible' : 'hidden');
+
+  useEffect(() => {
+    if (!ref.current) return;
+    if (open) {
+      const h = ref.current.scrollHeight;
+      setHeight(h);
+      setOverflow('hidden');
+      const timer = setTimeout(() => {
+        setHeight(undefined);
+        setOverflow('visible');
+      }, 250);
+      return () => clearTimeout(timer);
+    } else {
+      const h = ref.current.scrollHeight;
+      setHeight(h);
+      setOverflow('hidden');
+      // Force reflow then collapse
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setHeight(0);
+        });
+      });
+    }
+  }, [open]);
+
+  return (
+    <div
+      ref={ref}
+      style={{ height: height !== undefined ? `${height}px` : 'auto', overflow }}
+      className="transition-[height,opacity] duration-250 ease-out"
+    >
+      {children}
+    </div>
+  );
+};
+
 const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habitLogs, onAddTask, onUpdateTask, onDeleteTask }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -38,10 +79,9 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
   const [groupBySubject, setGroupBySubject] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
-  // Only show parent tasks (sub-tasks render inside their parent)
   const dayTasks = tasks
     .filter(t => t.scheduled_date === dateStr && !t.parent_task_id)
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+    .sort((a, b) => a.position - b.position || (a.start_time || '').localeCompare(b.start_time || ''));
 
   const resetForm = () => {
     setTitle(''); setDescription(''); setStartTime(''); setEndTime('');
@@ -67,6 +107,23 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
     setShowAddDialog(false);
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const taskId = result.draggableId;
+    const newPosition = result.destination.index;
+    const task = dayTasks.find(t => t.id === taskId);
+    if (!task || task.position === newPosition) return;
+    // Reorder: update positions for all affected tasks
+    const reordered = [...dayTasks];
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(newPosition, 0, moved);
+    reordered.forEach((t, i) => {
+      if (t.position !== i) {
+        onUpdateTask({ ...t, position: i });
+      }
+    });
+  };
+
   // Group tasks by subject
   const renderGrouped = () => {
     const grouped = new Map<string, Task[]>();
@@ -87,35 +144,40 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
       const progress = groupTasks.length > 0 ? Math.round((doneCount / groupTasks.length) * 100) : 0;
 
       return (
-        <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
-          {/* Header with subject color accent */}
+        <div className="rounded-xl border bg-card overflow-hidden shadow-sm animate-fade-in">
           <button
             onClick={() => setOpen(!open)}
             className="flex items-center gap-3 w-full py-3 px-4 hover:bg-accent/40 transition-colors text-left"
           >
-            <div className="h-8 w-1 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <div className="h-8 w-1 rounded-full shrink-0 transition-all duration-300" style={{ backgroundColor: color }} />
             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-90' : ''}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">{label}</span>
                 <span className="text-xs text-muted-foreground">{doneCount}/{groupTasks.length} done</span>
               </div>
-              {/* Mini progress bar */}
               <div className="h-1 w-full bg-muted rounded-full mt-1.5 max-w-[200px]">
                 <div
-                  className="h-1 rounded-full transition-all duration-300"
+                  className="h-1 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${progress}%`, backgroundColor: color }}
                 />
               </div>
             </div>
           </button>
 
-          {/* Collapsed: compact title list */}
-          {!open && (
+          {/* Collapsed title list - animated */}
+          <AnimatedCollapse open={!open}>
             <div className="px-4 pb-3 pl-[3.25rem] space-y-1">
-              {groupTasks.map(task => (
-                <div key={task.id} className="flex items-center gap-2">
-                  <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${task.status === 'done' ? 'bg-muted-foreground/40' : ''}`} style={task.status !== 'done' ? { backgroundColor: color } : {}} />
+              {groupTasks.map((task, i) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-2 animate-fade-in"
+                  style={{ animationDelay: `${i * 30}ms` }}
+                >
+                  <div
+                    className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors duration-200 ${task.status === 'done' ? 'bg-muted-foreground/40' : ''}`}
+                    style={task.status !== 'done' ? { backgroundColor: color } : {}}
+                  />
                   <span className={`text-xs truncate ${task.status === 'done' ? 'line-through text-muted-foreground' : 'text-foreground/80'}`}>
                     {task.title}
                   </span>
@@ -123,16 +185,18 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
                 </div>
               ))}
             </div>
-          )}
+          </AnimatedCollapse>
 
-          {/* Expanded: full task cards */}
-          {open && (
+          {/* Expanded task cards - animated */}
+          <AnimatedCollapse open={open}>
             <div className="space-y-2 px-4 pb-4 pt-1 border-t border-border/50">
-              {groupTasks.map(task => (
-                <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+              {groupTasks.map((task, i) => (
+                <div key={task.id} className="animate-scale-in" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
+                  <TaskCard task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+                </div>
               ))}
             </div>
-          )}
+          </AnimatedCollapse>
         </div>
       );
     };
@@ -168,13 +232,39 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
           <p className="text-sm text-muted-foreground py-8 text-center">No tasks scheduled for this day</p>
         )}
 
-        {dayTasks.length > 0 && groupBySubject ? renderGrouped() : (
-          <div className="space-y-2">
-            {dayTasks.map(task => (
-              <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
-            ))}
-          </div>
-        )}
+        {dayTasks.length > 0 && groupBySubject ? renderGrouped() : dayTasks.length > 0 ? (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="planner-tasks">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`space-y-2 min-h-[60px] rounded-lg p-1 transition-colors ${snapshot.isDraggingOver ? 'bg-accent/30' : ''}`}
+                >
+                  {dayTasks.map((task, index) => (
+                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                      {(dragProvided, dragSnapshot) => (
+                        <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps}>
+                          <TaskCard
+                            task={task}
+                            subjects={subjects}
+                            allTasks={tasks}
+                            onUpdateTask={onUpdateTask}
+                            onDeleteTask={onDeleteTask}
+                            onAddTask={onAddTask}
+                            showMoveButtons={false}
+                            isDragging={dragSnapshot.isDragging}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        ) : null}
 
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
