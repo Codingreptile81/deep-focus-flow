@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { Task, TaskPriority, TaskRecurrence, Subject, Habit, HabitLog, SUBJECT_COLOR_MAP } from '@/types';
+import { Task, TaskPriority, TaskRecurrence, Subject, Habit, HabitLog, SUBJECT_COLORS, SUBJECT_COLOR_MAP } from '@/types';
+import { useAppState } from '@/contexts/AppContext';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, CalendarIcon, ChevronRight } from 'lucide-react';
+import { Plus, CalendarIcon, ChevronRight, FolderPlus, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import TaskCard from '@/components/TaskCard';
@@ -65,6 +66,7 @@ const AnimatedCollapse: React.FC<{ open: boolean; children: React.ReactNode }> =
 };
 
 const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habitLogs, onAddTask, onUpdateTask, onDeleteTask }) => {
+  const { addSubject } = useAppState();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [title, setTitle] = useState('');
@@ -77,6 +79,8 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
   const [estimateMinutes, setEstimateMinutes] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [groupBySubject, setGroupBySubject] = useState(false);
+  const [addingNewSubject, setAddingNewSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const dayTasks = tasks
@@ -320,20 +324,62 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
                 <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
                 <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
               </div>
-              <Select value={subjectId} onValueChange={setSubjectId}>
-                <SelectTrigger><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Untitled</SelectItem>
-                  {subjects.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[s.color] }} />
-                        {s.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {addingNewSubject ? (
+                <div className="flex gap-1.5">
+                  <Input
+                    placeholder="New subject name"
+                    value={newSubjectName}
+                    onChange={e => setNewSubjectName(e.target.value)}
+                    className="h-9 text-sm flex-1"
+                    autoFocus
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newSubjectName.trim()) {
+                        const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+                        addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                        setNewSubjectName('');
+                        setAddingNewSubject(false);
+                      }
+                      if (e.key === 'Escape') setAddingNewSubject(false);
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-9 px-3"
+                    disabled={!newSubjectName.trim()}
+                    onClick={() => {
+                      const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+                      addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      setNewSubjectName('');
+                      setAddingNewSubject(false);
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-9 px-2" onClick={() => setAddingNewSubject(false)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-1.5">
+                  <Select value={subjectId} onValueChange={setSubjectId}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Subject (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Untitled</SelectItem>
+                      {subjects.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[s.color] }} />
+                            {s.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setAddingNewSubject(true)} title="Add new subject">
+                    <FolderPlus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <Input type="number" placeholder="Estimate (minutes)" value={estimateMinutes} onChange={e => setEstimateMinutes(e.target.value)} min={1} />
               <Popover>
                 <PopoverTrigger asChild>
