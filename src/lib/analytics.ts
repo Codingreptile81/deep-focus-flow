@@ -112,6 +112,45 @@ export const formatMinutes = (minutes: number): string => {
   return `${h}h ${m}m`;
 };
 
+export const getSessionStreak = (logs: SessionLog[]): { current: number; longest: number } => {
+  const dates = [...new Set(logs.map(l => l.date))].sort().reverse();
+  if (dates.length === 0) return { current: 0, longest: 0 };
+
+  // Current streak
+  let current = 0;
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  let checkDate = todayStr;
+  for (let i = 0; i < 365; i++) {
+    if (dates.includes(checkDate)) {
+      current++;
+      checkDate = format(subDays(parseISO(checkDate), 1), 'yyyy-MM-dd');
+    } else if (i === 0) {
+      // Allow starting from yesterday if no session today yet
+      checkDate = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+      continue;
+    } else {
+      break;
+    }
+  }
+
+  // Longest streak
+  const sortedAsc = [...dates].sort();
+  let longest = 1;
+  let run = 1;
+  for (let i = 1; i < sortedAsc.length; i++) {
+    const diff = differenceInCalendarDays(parseISO(sortedAsc[i]), parseISO(sortedAsc[i - 1]));
+    if (diff === 1) {
+      run++;
+      if (run > longest) longest = run;
+    } else if (diff > 1) {
+      run = 1;
+    }
+  }
+  if (dates.length === 0) longest = 0;
+
+  return { current, longest };
+};
+
 export const getMonthlyStudyData = (logs: SessionLog[]) => {
   const now = new Date();
   const year = now.getFullYear();
