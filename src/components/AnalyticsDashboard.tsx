@@ -163,14 +163,13 @@ const AnalyticsDashboard: React.FC = () => {
                 <div style={{ backfaceVisibility: 'hidden' }} className={showHabits ? '' : 'pointer-events-none absolute inset-0'}>
                   {showHabits && (
                     <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={monthlyHabits}>
+                      <AreaChart data={monthlyHabits}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                         <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                        <Bar dataKey="completed" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Completed" />
-                        <Bar dataKey="total" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.15} name="Total" />
-                      </BarChart>
+                        <Area type="monotone" dataKey="completed" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.1} strokeWidth={2} name="Completed" />
+                      </AreaChart>
                     </ResponsiveContainer>
                   )}
                 </div>
