@@ -13,6 +13,37 @@ import { format } from 'date-fns';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
 
+const TIMER_STORAGE_KEY = 'pomodoro_timer_state';
+
+interface TimerPersistState {
+  focusTarget: FocusTarget | null;
+  durationMinutes: number;
+  startedAt: string | null;
+  isRunning: boolean;
+  pausedSecondsLeft: number | null; // only set when paused mid-session
+}
+
+const saveTimerState = (state: TimerPersistState) => {
+  localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+};
+
+const clearTimerState = () => {
+  localStorage.removeItem(TIMER_STORAGE_KEY);
+};
+
+const loadTimerState = (): TimerPersistState | null => {
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+};
+
+const calcSecondsLeft = (startedAt: string, durationMinutes: number): number => {
+  const elapsed = (Date.now() - new Date(startedAt).getTime()) / 1000;
+  return Math.max(0, Math.ceil(durationMinutes * 60 - elapsed));
+};
+
 const PomodoroTimer: React.FC = () => {
   const { subjects, tasks, sessionLogs, addSubject, addSessionLog } = useAppState();
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
@@ -24,6 +55,61 @@ const PomodoroTimer: React.FC = () => {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectCategory, setNewSubjectCategory] = useState<'study' | 'skill'>('study');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasRestoredRef = useRef(false);
+
+  // Restore persisted timer state on mount
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+    const saved = loadTimerState();
+    if (!saved) return;
+
+    setFocusTarget(saved.focusTarget);
+    setDurationMinutes(saved.durationMinutes);
+
+    if (saved.isRunning && saved.startedAt) {
+      const remaining = calcSecondsLeft(saved.startedAt, saved.durationMinutes);
+      if (remaining > 0) {
+        setStartedAt(saved.startedAt);
+        setSecondsLeft(remaining);
+        setIsRunning(true);
+      } else {
+        // Timer expired while away — complete session
+        setStartedAt(saved.startedAt);
+        setSecondsLeft(0);
+        // Will be handled by the completion effect
+        clearTimerState();
+        if (saved.focusTarget && saved.startedAt) {
+          addSessionLog({
+            subject_id: saved.focusTarget.subjectId,
+            task_id: saved.focusTarget.type === 'task' ? saved.focusTarget.taskId : undefined,
+            duration_minutes: saved.durationMinutes,
+            started_at: saved.startedAt,
+            completed_at: new Date(new Date(saved.startedAt).getTime() + saved.durationMinutes * 60000).toISOString(),
+            date: format(new Date(saved.startedAt), 'yyyy-MM-dd'),
+          });
+        }
+      }
+    } else if (!saved.isRunning && saved.startedAt && saved.pausedSecondsLeft != null) {
+      // Was paused
+      setStartedAt(saved.startedAt);
+      setSecondsLeft(saved.pausedSecondsLeft);
+    } else {
+      setSecondsLeft(saved.durationMinutes * 60);
+    }
+  }, []);
+
+  // Persist state whenever it changes
+  useEffect(() => {
+    if (!hasRestoredRef.current) return;
+    saveTimerState({
+      focusTarget,
+      durationMinutes,
+      startedAt,
+      isRunning,
+      pausedSecondsLeft: !isRunning && startedAt ? secondsLeft : null,
+    });
+  }, [focusTarget, durationMinutes, startedAt, isRunning, secondsLeft]);
 
   const activeTasks = tasks.filter(t => t.status !== 'done');
   const todoTasks = activeTasks.filter(t => t.status === 'todo');
@@ -35,21 +121,23 @@ const PomodoroTimer: React.FC = () => {
   useEffect(() => {
     if (!isRunning) return;
     intervalRef.current = setInterval(() => {
-      setSecondsLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          setIsRunning(false);
-          completeSession();
-          return 0;
-        }
-        return prev - 1;
-      });
+      if (!startedAt) return;
+      const remaining = calcSecondsLeft(startedAt, durationMinutes);
+      if (remaining <= 0) {
+        clearInterval(intervalRef.current!);
+        setIsRunning(false);
+        setSecondsLeft(0);
+        completeSession();
+        return;
+      }
+      setSecondsLeft(remaining);
     }, 1000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isRunning]);
+  }, [isRunning, startedAt, durationMinutes]);
 
   const completeSession = useCallback(() => {
     if (!focusTarget || !startedAt) return;
+    clearTimerState();
     addSessionLog({
       subject_id: focusTarget.subjectId,
       task_id: focusTarget.type === 'task' ? focusTarget.taskId : undefined,
@@ -63,10 +151,13 @@ const PomodoroTimer: React.FC = () => {
 
   const handleStart = () => {
     if (!focusTarget) return;
-    setIsRunning(true);
     if (!startedAt) {
-      setStartedAt(new Date().toISOString());
+      // Fresh start — record start time based on current seconds left
+      const now = new Date();
+      const adjustedStart = new Date(now.getTime() - (durationMinutes * 60 - secondsLeft) * 1000);
+      setStartedAt(adjustedStart.toISOString());
     }
+    setIsRunning(true);
   };
 
   const handlePause = () => setIsRunning(false);
@@ -75,6 +166,7 @@ const PomodoroTimer: React.FC = () => {
     setIsRunning(false);
     setSecondsLeft(durationMinutes * 60);
     setStartedAt(null);
+    clearTimerState();
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
