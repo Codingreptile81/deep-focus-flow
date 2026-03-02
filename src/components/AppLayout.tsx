@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, BarChart3, ClipboardList, Sun, Moon, LogOut, Menu, X, PanelTop } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, BarChart3, ClipboardList, Sun, Moon, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useTheme } from '@/hooks/useTheme';
@@ -22,12 +22,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopNavVisible, setDesktopNavVisible] = useState(false);
 
-  // Close menus on route change
   useEffect(() => {
     setMobileOpen(false);
-    setDesktopNavVisible(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -46,22 +43,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop floating toggle */}
-      {!desktopNavVisible && (
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setDesktopNavVisible(true)}
-          className="hidden md:inline-flex fixed top-4 right-4 z-50 h-9 w-9 rounded-full shadow-lg border-border bg-background/95 backdrop-blur-md"
-          title="Show navigation"
-        >
-          <PanelTop className="h-4 w-4" />
-        </Button>
-      )}
-
-      {/* Desktop slide-down navbar */}
-      {desktopNavVisible && (
-        <header className="hidden md:block sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md animate-in slide-in-from-top-2 duration-200">
+      {/* Desktop: hover trigger zone + navbar */}
+      <div className="hidden md:block fixed top-0 left-0 right-0 z-50 group">
+        {/* Invisible hover zone */}
+        <div className="h-2 w-full" />
+        {/* Navbar slides down on hover */}
+        <header className="border-b border-border bg-background/95 backdrop-blur-md translate-y-[-100%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 ease-out">
           <div className="container flex h-12 items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
@@ -104,15 +91,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8" title="Sign out">
                 <LogOut className="h-3.5 w-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setDesktopNavVisible(false)} className="h-8 w-8" title="Hide navigation">
-                <X className="h-3.5 w-3.5" />
-              </Button>
             </div>
           </div>
         </header>
-      )}
+      </div>
 
-      {/* Mobile header - always visible */}
+      {/* Mobile header */}
       <header className="md:hidden sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="container flex h-12 items-center justify-between">
           <div className="flex items-center gap-2">
