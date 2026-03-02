@@ -4,6 +4,7 @@ import { SUBJECT_COLOR_MAP, HABIT_COLOR_OPTIONS } from '@/types';
 import { getTodayStudyMinutes, formatMinutes, getHabitStreak, getWeeklyStudyData } from '@/lib/analytics';
 import { getHabitIcon } from '@/lib/habit-icons';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link } from 'react-router-dom';
@@ -40,6 +41,7 @@ const DashboardPage: React.FC = () => {
   const [calendarDate, setCalendarDate] = React.useState<Date>(new Date());
   const [showTodayTasks, setShowTodayTasks] = React.useState(false);
   const [showTodayHabits, setShowTodayHabits] = React.useState(false);
+  const [habitInputs, setHabitInputs] = React.useState<Record<string, string>>({});
 
   const totalStreak = habits.length > 0
     ? Math.max(...habits.map(h => getHabitStreak(habitLogs, h.id)), 0)
@@ -368,7 +370,7 @@ const DashboardPage: React.FC = () => {
               const HabitIcon = getHabitIcon(habit.icon);
               const colorHex = HABIT_COLOR_OPTIONS.find(c => c.value === habit.color)?.hex || 'hsl(210,80%,55%)';
               return (
-                <div key={habit.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/50">
+                <div key={habit.id} className="flex items-center justify-between gap-2 py-2.5 px-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2.5 flex-1 min-w-0">
                     <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: colorHex + '22' }}>
                       <HabitIcon className="h-3.5 w-3.5" style={{ color: colorHex }} />
@@ -376,15 +378,32 @@ const DashboardPage: React.FC = () => {
                     <span className={`text-sm truncate ${completed ? 'line-through text-muted-foreground' : ''}`}>{habit.name}</span>
                   </div>
                   {completed ? (
-                    <span className="text-xs text-success font-medium flex items-center gap-1"><CheckSquare className="h-3.5 w-3.5" /> Done</span>
-                  ) : (
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => {
-                      if (habit.metric_type === 'binary') {
-                        addHabitLog({ habit_id: habit.id, value: 1, date: todayStr });
-                      }
+                    <span className="text-xs text-success font-medium flex items-center gap-1 shrink-0"><CheckSquare className="h-3.5 w-3.5" /> Done</span>
+                  ) : habit.metric_type === 'binary' ? (
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0" onClick={() => {
+                      addHabitLog({ habit_id: habit.id, value: 1, date: todayStr });
                     }}>
-                      <CheckSquare className="h-3 w-3" /> {habit.metric_type === 'binary' ? 'Done' : 'Log'}
+                      <CheckSquare className="h-3 w-3" /> Done
                     </Button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Input
+                        type="number"
+                        placeholder={habit.metric_type === 'count' ? '#' : 'min'}
+                        className="h-7 w-16 text-xs"
+                        value={habitInputs[habit.id] || ''}
+                        onChange={e => setHabitInputs(prev => ({ ...prev, [habit.id]: e.target.value }))}
+                      />
+                      <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => {
+                        const val = parseFloat(habitInputs[habit.id] || '');
+                        if (val > 0) {
+                          addHabitLog({ habit_id: habit.id, value: val, date: todayStr });
+                          setHabitInputs(prev => ({ ...prev, [habit.id]: '' }));
+                        }
+                      }}>
+                        Log
+                      </Button>
+                    </div>
                   )}
                 </div>
               );
