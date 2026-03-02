@@ -115,10 +115,9 @@ const PomodoroTimer: React.FC = () => {
         setSecondsLeft(remaining);
         setIsRunning(true);
       } else {
-        // Timer expired while away
-        setStartedAt(saved.startedAt);
-        setSecondsLeft(0);
+        // Timer expired while away — log and auto-reset
         clearTimerState();
+        setSecondsLeft(saved.durationMinutes * 60);
         toast({ title: '🎉 Session Complete!', description: `Your ${saved.durationMinutes}-minute focus session has ended.` });
         if (saved.focusTarget && saved.startedAt) {
           addSessionLog({
@@ -203,7 +202,9 @@ const PomodoroTimer: React.FC = () => {
       completed_at: new Date().toISOString(),
       date: format(new Date(), 'yyyy-MM-dd'),
     });
+    // Auto-reset for next session
     setStartedAt(null);
+    setSecondsLeft(durationMinutes * 60);
   }, [focusTarget, startedAt, durationMinutes, addSessionLog]);
 
   // Break timer tick
