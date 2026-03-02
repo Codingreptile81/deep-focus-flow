@@ -138,7 +138,7 @@ const AnalyticsDashboard: React.FC = () => {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <h3 className="font-semibold mb-4">Monthly Study</h3>
+              <h3 className="font-semibold mb-4">Daily Study — {new Date().toLocaleString('default', { month: 'long' })}</h3>
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={monthlyStudy}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

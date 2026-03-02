@@ -113,12 +113,15 @@ export const formatMinutes = (minutes: number): string => {
 };
 
 export const getMonthlyStudyData = (logs: SessionLog[]) => {
-  return Array.from({ length: 12 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (11 - i));
-    const month = format(date, 'yyyy-MM');
-    const label = format(date, 'MMM');
-    const minutes = logs.filter(l => l.date.startsWith(month)).reduce((s, l) => s + l.duration_minutes, 0);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd');
+    const label = `${day}`;
+    const minutes = logs.filter(l => l.date === dateStr).reduce((s, l) => s + l.duration_minutes, 0);
     return { date: label, minutes };
   });
 };
