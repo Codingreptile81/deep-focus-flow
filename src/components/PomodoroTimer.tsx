@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell } from 'lucide-react';
 import { format } from 'date-fns';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
@@ -77,8 +77,8 @@ const PomodoroTimer: React.FC = () => {
         // Timer expired while away — complete session
         setStartedAt(saved.startedAt);
         setSecondsLeft(0);
-        // Will be handled by the completion effect
         clearTimerState();
+        sendNotification('Pomodoro Complete!', 'Your focus session has ended.');
         if (saved.focusTarget && saved.startedAt) {
           addSessionLog({
             subject_id: saved.focusTarget.subjectId,
@@ -135,9 +135,34 @@ const PomodoroTimer: React.FC = () => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isRunning, startedAt, durationMinutes]);
 
+  const sendNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/favicon.ico' });
+    }
+    // Also play a subtle audio beep
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800;
+      gain.gain.value = 0.3;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch {}
+  };
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
+
   const completeSession = useCallback(() => {
     if (!focusTarget || !startedAt) return;
     clearTimerState();
+    sendNotification('Pomodoro Complete! 🎉', `Your ${durationMinutes}-minute focus session has ended.`);
     addSessionLog({
       subject_id: focusTarget.subjectId,
       task_id: focusTarget.type === 'task' ? focusTarget.taskId : undefined,
@@ -170,10 +195,34 @@ const PomodoroTimer: React.FC = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
-  const handleDurationChange = (val: string) => {
-    const num = parseInt(val) || 25;
-    setDurationMinutes(num);
-    if (!isRunning && !startedAt) setSecondsLeft(num * 60);
+  const [durationInput, setDurationInput] = useState(String(durationMinutes));
+
+  // Keep input in sync when durationMinutes changes externally
+  useEffect(() => {
+    if (!isRunning && !startedAt) setDurationInput(String(durationMinutes));
+  }, [durationMinutes]);
+
+  const handleDurationInputChange = (val: string) => {
+    // Allow empty string while typing
+    setDurationInput(val);
+    const num = parseInt(val);
+    if (!isNaN(num) && num >= 1 && num <= 120) {
+      setDurationMinutes(num);
+      if (!isRunning && !startedAt) setSecondsLeft(num * 60);
+    }
+  };
+
+  const handleDurationBlur = () => {
+    const num = parseInt(durationInput);
+    if (isNaN(num) || num < 1) {
+      setDurationMinutes(1);
+      setDurationInput('1');
+      if (!isRunning && !startedAt) setSecondsLeft(60);
+    } else if (num > 120) {
+      setDurationMinutes(120);
+      setDurationInput('120');
+      if (!isRunning && !startedAt) setSecondsLeft(120 * 60);
+    }
   };
 
   const handleAddSubject = () => {
@@ -315,11 +364,29 @@ const PomodoroTimer: React.FC = () => {
           </div>
         </div>
 
-        {/* Duration Input */}
-        <div className="flex items-center justify-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <Input type="number" min={1} max={120} value={durationMinutes} onChange={e => handleDurationChange(e.target.value)} className="w-20 text-center font-mono" disabled={isRunning} />
-          <span className="text-sm text-muted-foreground">minutes</span>
+        {/* Duration & Notification */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              min={1}
+              max={120}
+              value={durationInput}
+              onChange={e => handleDurationInputChange(e.target.value)}
+              onBlur={handleDurationBlur}
+              className="w-14 text-center font-mono border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0"
+              disabled={isRunning || !!startedAt}
+            />
+            <span className="text-sm text-muted-foreground">min</span>
+          </div>
+          {'Notification' in window && Notification.permission !== 'granted' && (
+            <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={requestNotificationPermission}>
+              <Bell className="h-3.5 w-3.5" /> Enable alerts
+            </Button>
+          )}
         </div>
 
         {/* Controls */}
