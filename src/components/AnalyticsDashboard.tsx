@@ -15,16 +15,22 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Area, AreaChart,
 } from 'recharts';
-import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const AnalyticsDashboard: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
   const [showHabits, setShowHabits] = useState(true);
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const selectedDate = new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1);
+  const selectedYear = selectedDate.getFullYear();
+  const selectedMonth = selectedDate.getMonth();
+  const monthLabel = selectedDate.toLocaleString('default', { month: 'long', year: 'numeric' });
 
   const weeklyStudy = getWeeklyStudyData(sessionLogs, subjects);
-  const monthlyStudy = getMonthlyStudyData(sessionLogs);
-  const monthlyHabits = getMonthlyHabitData(habitLogs, habits);
+  const monthlyStudy = getMonthlyStudyData(sessionLogs, selectedYear, selectedMonth);
+  const monthlyHabits = getMonthlyHabitData(habitLogs, habits, selectedYear, selectedMonth);
   const distribution = getSubjectDistribution(sessionLogs, subjects);
   const weeklyHabits = getWeeklyHabitData(habitLogs, habits);
   const mostFocused = getMostFocusedSubject(sessionLogs, subjects);
@@ -140,17 +146,26 @@ const AnalyticsDashboard: React.FC = () => {
             <Card className="p-6 relative" style={{ perspective: '1200px' }}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">
-                  {showHabits ? 'Daily Habits' : 'Daily Study'} — {new Date().toLocaleString('default', { month: 'long' })}
+                  {showHabits ? 'Daily Habits' : 'Daily Study'}
                 </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1.5"
-                  onClick={() => setShowHabits(!showHabits)}
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  {showHabits ? 'Study' : 'Habits'}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMonthOffset(o => o - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-xs font-medium min-w-[100px] text-center">{monthLabel}</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMonthOffset(o => Math.min(o + 1, 0))} disabled={monthOffset >= 0}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5 ml-1"
+                    onClick={() => setShowHabits(!showHabits)}
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    {showHabits ? 'Study' : 'Habits'}
+                  </Button>
+                </div>
               </div>
               <div
                 className="transition-transform duration-500 ease-in-out"
