@@ -128,19 +128,21 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
                   value={newSubjectName}
                   onChange={e => setNewSubjectName(e.target.value)}
                   autoFocus
-                  onKeyDown={e => {
+                  onKeyDown={async e => {
                     if (e.key === 'Enter' && newSubjectName.trim()) {
                       const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
-                      addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      const newSub = await addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                      if (newSub) setEditSubjectId(newSub.id);
                       setNewSubjectName('');
                       setAddingNewSubject(false);
                     }
                     if (e.key === 'Escape') setAddingNewSubject(false);
                   }}
                 />
-                <Button size="sm" className="h-8 px-2" disabled={!newSubjectName.trim()} onClick={() => {
+                <Button size="sm" className="h-8 px-2" disabled={!newSubjectName.trim()} onClick={async () => {
                   const color = SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
-                  addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                  const newSub = await addSubject({ name: newSubjectName.trim(), category: 'study', color });
+                  if (newSub) setEditSubjectId(newSub.id);
                   setNewSubjectName('');
                   setAddingNewSubject(false);
                 }}>
