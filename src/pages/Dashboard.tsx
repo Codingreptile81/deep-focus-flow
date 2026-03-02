@@ -5,6 +5,7 @@ import { getTodayStudyMinutes, formatMinutes, getHabitStreak, getWeeklyStudyData
 import { getHabitIcon } from '@/lib/habit-icons';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import { Timer, CheckSquare, Flame, Clock, ArrowRight, Trophy, Award, Star, Shield, TrendingUp, AlertTriangle, CalendarClock, ListTodo } from 'lucide-react';
@@ -37,6 +38,7 @@ const DashboardPage: React.FC = () => {
 
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date());
   const [calendarDate, setCalendarDate] = React.useState<Date>(new Date());
+  const [showTodayTasks, setShowTodayTasks] = React.useState(false);
 
   const totalStreak = habits.length > 0
     ? Math.max(...habits.map(h => getHabitStreak(habitLogs, h.id)), 0)
@@ -124,8 +126,7 @@ const DashboardPage: React.FC = () => {
               </div>
             </Card>
           </Link>
-          <Link to="/planner">
-            <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
+          <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group" onClick={() => setShowTodayTasks(true)}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="h-8 w-8 rounded-lg bg-accent/50 flex items-center justify-center">
@@ -141,7 +142,6 @@ const DashboardPage: React.FC = () => {
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
             </Card>
-          </Link>
         </div>
 
         {/* Right side: Stats and content */}
@@ -328,6 +328,32 @@ const DashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Today's Tasks Dialog */}
+      <Dialog open={showTodayTasks} onOpenChange={setShowTodayTasks}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Today's Tasks</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+            {(() => {
+              const todayTasks = tasks.filter(t => t.scheduled_date === todayStr || t.deadline === todayStr);
+              if (todayTasks.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">No tasks scheduled for today.</p>;
+              return todayTasks.map(t => (
+                <div key={t.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${t.status === 'done' ? 'bg-[hsl(var(--success))]' : t.status === 'in_progress' ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
+                    <span className={`text-sm truncate ${t.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>{t.title}</span>
+                  </div>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${t.priority === 'high' ? 'bg-destructive/10 text-destructive' : t.priority === 'medium' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
+                    {t.priority}
+                  </span>
+                </div>
+              ));
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
