@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Timer, CheckSquare, BarChart3, ClipboardList, Sun, Moon, LogOut } from 'lucide-react';
+import { LayoutDashboard, Timer, CheckSquare, BarChart3, ClipboardList, Sun, Moon, LogOut, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +75,9 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </Button>
+            <RouterNavLink to="/profile" className={({ isActive }) => `h-8 w-8 inline-flex items-center justify-center rounded-md transition-colors ${isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`} title="Profile">
+              <UserCircle className="h-3.5 w-3.5" />
+            </RouterNavLink>
             <Button
               variant="ghost"
               size="icon"
