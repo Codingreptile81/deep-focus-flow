@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
-import { Timer, CheckSquare, Flame, Clock, ArrowRight, Trophy, Award, Star, Shield, TrendingUp, AlertTriangle, CalendarClock } from 'lucide-react';
+import { Timer, CheckSquare, Flame, Clock, ArrowRight, Trophy, Award, Star, Shield, TrendingUp, AlertTriangle, CalendarClock, ListTodo } from 'lucide-react';
 import { format, subDays, isBefore, startOfDay, parseISO, addDays } from 'date-fns';
 import ActivityCalendar from '@/components/ActivityCalendar';
 
@@ -118,6 +118,24 @@ const DashboardPage: React.FC = () => {
                   <div>
                     <div className="font-medium text-xs">Log Habit</div>
                     <div className="text-[10px] text-muted-foreground">{habits.length - completedHabitsToday.length} remaining</div>
+                  </div>
+                </div>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </div>
+            </Card>
+          </Link>
+          <Link to="/planner">
+            <Card className="p-4 hover:bg-accent/50 transition-colors cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-accent/50 flex items-center justify-center">
+                    <ListTodo className="h-4 w-4 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-xs">Today's Tasks</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {tasks.filter(t => t.status !== 'done' && (t.scheduled_date === todayStr || t.deadline === todayStr)).length} due today
+                    </div>
                   </div>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />

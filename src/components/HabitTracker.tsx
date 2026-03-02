@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Flame, Check, Hash, Clock, MoreVertical, Trash2, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Flame, Check, Hash, Clock, MoreVertical, Trash2, Edit, ChevronLeft, ChevronRight, Undo2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, subMonths, addMonths } from 'date-fns';
 import HabitGridView from './HabitGridView';
 
 const HabitTracker: React.FC = () => {
-  const { habits, habitLogs, addHabit, updateHabit, addHabitLog, deleteHabit } = useAppState();
+  const { habits, habitLogs, addHabit, updateHabit, addHabitLog, deleteHabitLog, deleteHabit } = useAppState();
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
   const [newMetric, setNewMetric] = useState<'binary' | 'count' | 'minutes'>('binary');
@@ -249,9 +249,14 @@ const HabitTracker: React.FC = () => {
                         </div>
 
                         {completed ? (
-                          <div className="flex items-center gap-2 text-sm text-success">
-                            <Check className="h-4 w-4" />
-                            <span>Done today{todayLog && todayLog.value > 1 ? ` (${todayLog.value})` : ''}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-sm text-success">
+                              <Check className="h-4 w-4" />
+                              <span>Done today{todayLog && todayLog.value > 1 ? ` (${todayLog.value})` : ''}</span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => todayLog && deleteHabitLog(todayLog.id)} title="Undo">
+                              <Undo2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         ) : (
                           <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => quickLog(habit)}>
@@ -364,6 +369,12 @@ const HabitTracker: React.FC = () => {
                               <div className="flex items-center gap-1 text-success">
                                 <Check className="h-3 w-3" />
                                 <span className="font-mono">{log.value > 1 ? log.value : ''}</span>
+                                {log.note && <span className="text-muted-foreground italic truncate max-w-[60px]" title={log.note}>"{log.note}"</span>}
+                                {selectedCalDate === todayStr && (
+                                  <button onClick={() => deleteHabitLog(log.id)} className="ml-1 text-muted-foreground hover:text-destructive" title="Undo">
+                                    <Undo2 className="h-3 w-3" />
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
@@ -381,7 +392,7 @@ const HabitTracker: React.FC = () => {
 
         {/* === GRID LOG TAB === */}
         <TabsContent value="grid" className="mt-4">
-          <HabitGridView habits={habits} habitLogs={habitLogs} onLog={handleGridLog} />
+          <HabitGridView habits={habits} habitLogs={habitLogs} onLog={handleGridLog} onDeleteLog={deleteHabitLog} />
         </TabsContent>
       </Tabs>
     </div>

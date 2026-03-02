@@ -15,6 +15,7 @@ interface AppState {
   updateHabit: (habit: Habit) => Promise<void>;
   addSessionLog: (log: Omit<SessionLog, 'id'>) => Promise<void>;
   addHabitLog: (log: Omit<HabitLog, 'id'>) => Promise<void>;
+  deleteHabitLog: (id: string) => Promise<void>;
   deleteSubject: (id: string) => Promise<void>;
   deleteHabit: (id: string) => Promise<void>;
   addTask: (task: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => Promise<void>;
@@ -117,6 +118,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const deleteHabitLog = useCallback(async (id: string) => {
+    if (!user) return;
+    const { error } = await supabase.from('habit_logs').delete().eq('id', id);
+    if (!error) setHabitLogs(prev => prev.filter(l => l.id !== id));
+  }, [user]);
+
   const deleteSubject = useCallback(async (id: string) => {
     if (!user) return;
     const { error } = await supabase.from('subjects').delete().eq('id', id);
@@ -160,7 +167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [user]);
 
   return (
-    <AppContext.Provider value={{ subjects, habits, sessionLogs, habitLogs, tasks, loading, addSubject, addHabit, updateHabit, addSessionLog, addHabitLog, deleteSubject, deleteHabit, addTask, updateTask, deleteTask }}>
+    <AppContext.Provider value={{ subjects, habits, sessionLogs, habitLogs, tasks, loading, addSubject, addHabit, updateHabit, addSessionLog, addHabitLog, deleteHabitLog, deleteSubject, deleteHabit, addTask, updateTask, deleteTask }}>
       {children}
     </AppContext.Provider>
   );
