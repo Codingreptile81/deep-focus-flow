@@ -17,7 +17,7 @@ interface PlannerViewProps {
   subjects: Subject[];
   habits: Habit[];
   habitLogs: HabitLog[];
-  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number }) => void;
+  onAddTask: (task: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number; parent_task_id?: string }) => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
 }
@@ -34,22 +34,18 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
   const [subjectId, setSubjectId] = useState<string>('none');
   const [estimateMinutes, setEstimateMinutes] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
+  const [groupBySubject, setGroupBySubject] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  // Only show parent tasks (sub-tasks render inside their parent)
   const dayTasks = tasks
-    .filter(t => t.scheduled_date === dateStr)
+    .filter(t => t.scheduled_date === dateStr && !t.parent_task_id)
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
 
   const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setStartTime('');
-    setEndTime('');
-    setPriority('medium');
-    setRecurrence('none');
-    setSubjectId('none');
-    setEstimateMinutes('');
-    setDeadline(undefined);
+    setTitle(''); setDescription(''); setStartTime(''); setEndTime('');
+    setPriority('medium'); setRecurrence('none'); setSubjectId('none');
+    setEstimateMinutes(''); setDeadline(undefined);
   };
 
   const handleAdd = () => {
@@ -70,35 +66,82 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
     setShowAddDialog(false);
   };
 
+  // Group tasks by subject
+  const renderGrouped = () => {
+    const grouped = new Map<string, Task[]>();
+    const ungrouped: Task[] = [];
+    dayTasks.forEach(t => {
+      if (t.subject_id) {
+        const arr = grouped.get(t.subject_id) || [];
+        arr.push(t);
+        grouped.set(t.subject_id, arr);
+      } else {
+        ungrouped.push(t);
+      }
+    });
+
+    return (
+      <div className="space-y-4">
+        {Array.from(grouped.entries()).map(([subjectId, sTasks]) => {
+          const subject = subjects.find(s => s.id === subjectId);
+          return (
+            <div key={subjectId} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[subject?.color || 'subject-blue'] }} />
+                <h4 className="text-sm font-semibold">{subject?.name || 'Unknown'}</h4>
+                <span className="text-xs text-muted-foreground">({sTasks.length})</span>
+              </div>
+              <div className="space-y-2">
+                {sTasks.map(task => (
+                  <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {ungrouped.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-muted-foreground">No Subject</h4>
+            {ungrouped.map(task => (
+              <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <div className="space-y-4">
         <div className="rounded-md border">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            className="p-3"
-          />
+          <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} className="p-3" />
         </div>
       </div>
 
       <div className="space-y-3 relative min-h-[300px]">
-        <h3 className="text-sm font-semibold">Tasks for {format(selectedDate, 'MMM d, yyyy')}</h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Tasks for {format(selectedDate, 'MMM d, yyyy')}</h3>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setGroupBySubject(!groupBySubject)}>
+            {groupBySubject ? 'Ungroup' : 'Group by Subject'}
+          </Button>
+        </div>
+
         {dayTasks.length === 0 && (
           <p className="text-sm text-muted-foreground py-8 text-center">No tasks scheduled for this day</p>
         )}
-        {dayTasks.map(task => (
-          <TaskCard key={task.id} task={task} subjects={subjects} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} showMoveButtons={false} />
-        ))}
 
-        {/* Floating Add Button */}
+        {dayTasks.length > 0 && groupBySubject ? renderGrouped() : (
+          <div className="space-y-2">
+            {dayTasks.map(task => (
+              <TaskCard key={task.id} task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+            ))}
+          </div>
+        )}
+
         <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button
-              size="icon"
-              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 hover:scale-105 transition-transform"
-            >
+            <Button size="icon" className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 hover:scale-105 transition-transform">
               <Plus className="h-6 w-6" />
             </Button>
           </DialogTrigger>
