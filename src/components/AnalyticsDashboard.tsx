@@ -15,7 +15,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Area, AreaChart,
 } from 'recharts';
-import { TrendingUp, Target, Calendar, Flame, ListTodo, Columns3, Crosshair, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle } from 'lucide-react';
 
 const AnalyticsDashboard: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
@@ -33,9 +33,6 @@ const AnalyticsDashboard: React.FC = () => {
   const todosPerDay = getTodosCompletedPerDay(tasks);
   const completionRate = getTodoCompletionRate(tasks);
   const overdueTodos = getOverdueTodos(tasks);
-  const cardsPerWeek = getCardsCompletedPerWeek(tasks);
-  const wipCount = getWIPCount(tasks);
-  const timePerCol = getTimePerColumn(sessionLogs, tasks);
   const { planned, actual } = getPlannedVsActual(tasks);
   const focusAccuracy = getFocusAccuracy(tasks);
   const estimateAccuracy = getEstimateAccuracy(tasks);
@@ -63,8 +60,8 @@ const AnalyticsDashboard: React.FC = () => {
       <Tabs defaultValue="study">
         <TabsList>
           <TabsTrigger value="study" className="gap-1 text-xs"><TrendingUp className="h-3.5 w-3.5" /> Study</TabsTrigger>
+          <TabsTrigger value="habits" className="gap-1 text-xs"><Flame className="h-3.5 w-3.5" /> Habits</TabsTrigger>
           <TabsTrigger value="tasks" className="gap-1 text-xs"><ListTodo className="h-3.5 w-3.5" /> Tasks</TabsTrigger>
-          <TabsTrigger value="kanban" className="gap-1 text-xs"><Columns3 className="h-3.5 w-3.5" /> Kanban</TabsTrigger>
           <TabsTrigger value="planning" className="gap-1 text-xs"><Crosshair className="h-3.5 w-3.5" /> Planning</TabsTrigger>
         </TabsList>
 
@@ -245,49 +242,71 @@ const AnalyticsDashboard: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* ═══ KANBAN TAB ═══ */}
-        <TabsContent value="kanban" className="space-y-6 mt-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+        {/* ═══ HABITS TAB ═══ */}
+        <TabsContent value="habits" className="space-y-6 mt-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground mb-1">Work in Progress</div>
-              <div className="stat-value">{wipCount}</div>
+              <div className="text-xs text-muted-foreground mb-1">Active Habits</div>
+              <div className="stat-value">{habits.length}</div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground mb-1">Done (total)</div>
-              <div className="text-lg font-semibold">{tasks.filter(t => t.status === 'done').length}</div>
+              <div className="text-xs text-muted-foreground mb-1">Longest Streak</div>
+              <div className="text-lg font-semibold flex items-center gap-2">
+                <Flame className="h-4 w-4 text-warning" />
+                {habits.length > 0 ? Math.max(...habits.map(h => getHabitStreak(habitLogs, h.id)), 0) : 0}d
+              </div>
             </Card>
             <Card className="p-4">
-              <div className="text-xs text-muted-foreground mb-1">Active Cards</div>
-              <div className="text-lg font-semibold">{tasks.filter(t => t.status !== 'done').length}</div>
+              <div className="text-xs text-muted-foreground mb-1">Completed Today</div>
+              <div className="text-lg font-semibold">
+                {habits.filter(h => habitLogs.some(l => l.habit_id === h.id && l.date === new Date().toISOString().split('T')[0])).length}/{habits.length}
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="text-xs text-muted-foreground mb-1">Total Logs</div>
+              <div className="text-lg font-semibold">{habitLogs.length}</div>
             </Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="p-6">
-              <h3 className="font-semibold mb-4">Cards Completed per Week</h3>
+              <h3 className="font-semibold mb-4">Weekly Habit Completion</h3>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={cardsPerWeek}>
+                <BarChart data={weeklyHabits}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                   <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                  <Bar dataKey="completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="completed" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Completed" />
+                  <Bar dataKey="total" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.2} name="Total" />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4">Time per Column</h3>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={timePerCol}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="column" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} formatter={(v: number) => formatMinutes(v)} />
-                  <Bar dataKey="minutes" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
+            {habits.length > 0 && (
+              <Card className="p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-warning" /> Streak Overview
+                </h3>
+                <div className="space-y-3">
+                  {habits.map(h => {
+                    const streak = getHabitStreak(habitLogs, h.id);
+                    const maxStreak = habits.length > 0 ? Math.max(...habits.map(hb => getHabitStreak(habitLogs, hb.id)), 1) : 1;
+                    return (
+                      <div key={h.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{h.name}</span>
+                          <span className="font-mono text-muted-foreground">{streak}d</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-warning transition-all" style={{ width: `${Math.min((streak / maxStreak) * 100, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
