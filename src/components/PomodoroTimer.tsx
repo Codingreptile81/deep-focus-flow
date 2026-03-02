@@ -364,29 +364,49 @@ const PomodoroTimer: React.FC = () => {
           </div>
         </div>
 
-        {/* Duration & Notification */}
-        <div className="flex items-center justify-center gap-3">
-          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min={1}
-              max={120}
-              value={durationInput}
-              onChange={e => handleDurationInputChange(e.target.value)}
-              onBlur={handleDurationBlur}
-              className="w-14 text-center font-mono border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0"
-              disabled={isRunning || !!startedAt}
-            />
-            <span className="text-sm text-muted-foreground">min</span>
+        {/* Duration Presets & Input */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            {[15, 25, 45, 60].map(preset => (
+              <Button
+                key={preset}
+                variant={durationMinutes === preset && !isRunning && !startedAt ? 'default' : 'outline'}
+                size="sm"
+                className="h-8 px-3 text-xs font-mono"
+                disabled={isRunning || !!startedAt}
+                onClick={() => {
+                  setDurationMinutes(preset);
+                  setDurationInput(String(preset));
+                  setSecondsLeft(preset * 60);
+                }}
+              >
+                {preset}m
+              </Button>
+            ))}
           </div>
-          {'Notification' in window && Notification.permission !== 'granted' && (
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={requestNotificationPermission}>
-              <Bell className="h-3.5 w-3.5" /> Enable alerts
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min={1}
+                max={120}
+                value={durationInput}
+                onChange={e => handleDurationInputChange(e.target.value)}
+                onBlur={handleDurationBlur}
+                className="w-14 text-center font-mono border-0 bg-transparent p-0 h-auto text-lg focus-visible:ring-0"
+                disabled={isRunning || !!startedAt}
+              />
+              <span className="text-sm text-muted-foreground">min</span>
+            </div>
+            {'Notification' in window && Notification.permission !== 'granted' && (
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground" onClick={requestNotificationPermission}>
+                <Bell className="h-3.5 w-3.5" /> Enable alerts
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Controls */}
