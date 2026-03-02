@@ -124,6 +124,23 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
     });
   };
 
+  const handleGroupedDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const taskId = result.draggableId;
+    const task = dayTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const destGroupId = result.destination.droppableId;
+    const newSubjectId = destGroupId === 'ungrouped' ? undefined : destGroupId;
+
+    // Update subject if moved between groups
+    if ((task.subject_id || undefined) !== newSubjectId) {
+      onUpdateTask({ ...task, subject_id: newSubjectId, position: result.destination.index });
+    } else if (task.position !== result.destination.index) {
+      onUpdateTask({ ...task, position: result.destination.index });
+    }
+  };
+
   // Group tasks by subject
   const renderGrouped = () => {
     const grouped = new Map<string, Task[]>();
@@ -138,7 +155,7 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
       }
     });
 
-    const GroupSection: React.FC<{ groupTasks: Task[]; label: string; color: string }> = ({ groupTasks, label, color }) => {
+    const GroupSection: React.FC<{ groupTasks: Task[]; label: string; color: string; droppableId: string }> = ({ groupTasks, label, color, droppableId }) => {
       const [open, setOpen] = useState(false);
       const doneCount = groupTasks.filter(t => t.status === 'done').length;
       const progress = groupTasks.length > 0 ? Math.round((doneCount / groupTasks.length) * 100) : 0;
@@ -165,15 +182,11 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
             </div>
           </button>
 
-          {/* Collapsed title list - animated */}
+          {/* Collapsed title list */}
           <AnimatedCollapse open={!open}>
             <div className="px-4 pb-3 pl-[3.25rem] space-y-1">
               {groupTasks.map((task, i) => (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-2 animate-fade-in"
-                  style={{ animationDelay: `${i * 30}ms` }}
-                >
+                <div key={task.id} className="flex items-center gap-2 animate-fade-in" style={{ animationDelay: `${i * 30}ms` }}>
                   <div
                     className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors duration-200 ${task.status === 'done' ? 'bg-muted-foreground/40' : ''}`}
                     style={task.status !== 'done' ? { backgroundColor: color } : {}}
@@ -187,28 +200,52 @@ const PlannerView: React.FC<PlannerViewProps> = ({ tasks, subjects, habits, habi
             </div>
           </AnimatedCollapse>
 
-          {/* Expanded task cards - animated */}
+          {/* Expanded: droppable task cards */}
           <AnimatedCollapse open={open}>
-            <div className="space-y-2 px-4 pb-4 pt-1 border-t border-border/50">
-              {groupTasks.map((task, i) => (
-                <div key={task.id} className="animate-scale-in" style={{ animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}>
-                  <TaskCard task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} />
+            <Droppable droppableId={droppableId}>
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`space-y-2 px-4 pb-4 pt-1 border-t border-border/50 min-h-[40px] transition-colors rounded-b-xl ${snapshot.isDraggingOver ? 'bg-accent/30' : ''}`}
+                >
+                  {groupTasks.map((task, i) => (
+                    <Draggable key={task.id} draggableId={task.id} index={i}>
+                      {(dragProvided, dragSnapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className="animate-scale-in"
+                          style={{ ...dragProvided.draggableProps.style, animationDelay: `${i * 50}ms`, animationFillMode: 'both' }}
+                        >
+                          <TaskCard task={task} subjects={subjects} allTasks={tasks} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} showMoveButtons={false} isDragging={dragSnapshot.isDragging} />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  {groupTasks.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">Drop tasks here</p>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </Droppable>
           </AnimatedCollapse>
         </div>
       );
     };
 
     return (
-      <div className="space-y-3">
-        {Array.from(grouped.entries()).map(([subjectId, sTasks]) => {
-          const subject = subjects.find(s => s.id === subjectId);
-          return <GroupSection key={subjectId} groupTasks={sTasks} label={subject?.name || 'Unknown'} color={SUBJECT_COLOR_MAP[subject?.color || 'subject-blue']} />;
-        })}
-        {ungrouped.length > 0 && <GroupSection groupTasks={ungrouped} label="Untitled" color="hsl(var(--muted-foreground))" />}
-      </div>
+      <DragDropContext onDragEnd={handleGroupedDragEnd}>
+        <div className="space-y-3">
+          {Array.from(grouped.entries()).map(([subjectId, sTasks]) => {
+            const subject = subjects.find(s => s.id === subjectId);
+            return <GroupSection key={subjectId} droppableId={subjectId} groupTasks={sTasks} label={subject?.name || 'Unknown'} color={SUBJECT_COLOR_MAP[subject?.color || 'subject-blue']} />;
+          })}
+          <GroupSection droppableId="ungrouped" groupTasks={ungrouped} label="Untitled" color="hsl(var(--muted-foreground))" />
+        </div>
+      </DragDropContext>
     );
   };
 
