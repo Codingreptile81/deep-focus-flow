@@ -165,6 +165,19 @@ export const getMonthlyStudyData = (logs: SessionLog[]) => {
   });
 };
 
+export const getMonthlyHabitData = (logs: HabitLog[], habits: Habit[]) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const dateStr = format(new Date(year, month, day), 'yyyy-MM-dd');
+    const completed = habits.filter(h => logs.some(l => l.habit_id === h.id && l.date === dateStr)).length;
+    return { date: `${day}`, completed, total: habits.length };
+  });
+};
+
 // ═══════════════════════════════════════════
 // V2 Analytics: Task, Kanban, Planning
 // ═══════════════════════════════════════════

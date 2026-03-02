@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppState } from '@/contexts/AppContext';
 import { SUBJECT_COLOR_MAP } from '@/types';
 import {
-  getSubjectDistribution, getWeeklyStudyData, getMonthlyStudyData,
+  getSubjectDistribution, getWeeklyStudyData, getMonthlyStudyData, getMonthlyHabitData,
   getWeeklyHabitData, getHabitStreak, getMostFocusedSubject,
   getBestDayOfWeek, formatMinutes,
   getTimePerTask, getTodosCompletedPerDay, getTodoCompletionRate,
@@ -15,13 +15,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Area, AreaChart,
 } from 'recharts';
-import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const AnalyticsDashboard: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
+  const [showHabits, setShowHabits] = useState(true);
 
   const weeklyStudy = getWeeklyStudyData(sessionLogs, subjects);
   const monthlyStudy = getMonthlyStudyData(sessionLogs);
+  const monthlyHabits = getMonthlyHabitData(habitLogs, habits);
   const distribution = getSubjectDistribution(sessionLogs, subjects);
   const weeklyHabits = getWeeklyHabitData(habitLogs, habits);
   const mostFocused = getMostFocusedSubject(sessionLogs, subjects);
@@ -134,17 +137,58 @@ const AnalyticsDashboard: React.FC = () => {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="p-6">
-              <h3 className="font-semibold mb-4">Daily Study — {new Date().toLocaleString('default', { month: 'long' })}</h3>
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={monthlyStudy}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                  <Area type="monotone" dataKey="minutes" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+            <Card className="p-6 relative" style={{ perspective: '1200px' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">
+                  {showHabits ? 'Daily Habits' : 'Daily Study'} — {new Date().toLocaleString('default', { month: 'long' })}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setShowHabits(!showHabits)}
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  {showHabits ? 'Study' : 'Habits'}
+                </Button>
+              </div>
+              <div
+                className="transition-transform duration-500 ease-in-out"
+                style={{
+                  transformStyle: 'preserve-3d',
+                  transform: showHabits ? 'rotateY(0deg)' : 'rotateY(180deg)',
+                }}
+              >
+                {/* Front: Habits */}
+                <div style={{ backfaceVisibility: 'hidden' }} className={showHabits ? '' : 'pointer-events-none absolute inset-0'}>
+                  {showHabits && (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={monthlyHabits}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                        <Bar dataKey="completed" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} name="Completed" />
+                        <Bar dataKey="total" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.15} name="Total" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+                {/* Back: Study */}
+                <div style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }} className={!showHabits ? '' : 'pointer-events-none absolute inset-0'}>
+                  {!showHabits && (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <AreaChart data={monthlyStudy}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                        <Area type="monotone" dataKey="minutes" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.1} strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
             </Card>
 
             <Card className="p-6">
