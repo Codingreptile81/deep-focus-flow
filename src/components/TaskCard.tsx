@@ -4,18 +4,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, ChevronDown, ChevronUp, ListTree } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Trash2, Repeat, Timer, Check, X, AlertTriangle, CalendarIcon, Plus, Pencil, ListTree } from 'lucide-react';
 import { formatMinutes } from '@/lib/analytics';
 import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-const PRIORITY_COLORS: Record<string, { border: string; badge: string }> = {
-  high: { border: 'border-l-4 border-l-destructive', badge: 'bg-destructive text-destructive-foreground' },
-  medium: { border: 'border-l-4 border-l-[hsl(45,93%,47%)]', badge: 'bg-[hsl(45,93%,47%)] text-white' },
-  low: { border: 'border-l-4 border-l-[hsl(160,60%,45%)]', badge: 'bg-[hsl(160,60%,45%)] text-white' },
+const PRIORITY_BADGE: Record<string, string> = {
+  high: 'bg-destructive text-destructive-foreground',
+  medium: 'bg-[hsl(45,93%,47%)] text-white',
+  low: 'bg-[hsl(160,60%,45%)] text-white',
 };
 
 const STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'done'];
@@ -30,10 +31,9 @@ interface TaskCardProps {
   onAddTask?: (task: { title: string; priority: TaskPriority; parent_task_id?: string; scheduled_date?: string; subject_id?: string }) => void;
   showMoveButtons?: boolean;
   isDragging?: boolean;
-  isSubTask?: boolean;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [], onUpdateTask, onDeleteTask, onAddTask, showMoveButtons = true, isDragging = false, isSubTask = false }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [], onUpdateTask, onDeleteTask, onAddTask, showMoveButtons = true, isDragging = false }) => {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
@@ -41,14 +41,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
   const [editEstimate, setEditEstimate] = useState(task.estimate_minutes?.toString() || '');
   const [editPriority, setEditPriority] = useState(task.priority);
   const [editDeadline, setEditDeadline] = useState<Date | undefined>(task.deadline ? parseISO(task.deadline) : undefined);
-  const [showSubTasks, setShowSubTasks] = useState(true);
   const [addingSubTask, setAddingSubTask] = useState(false);
   const [subTaskTitle, setSubTaskTitle] = useState('');
 
   const currentIdx = STATUS_ORDER.indexOf(task.status);
   const canMoveLeft = currentIdx > 0;
   const canMoveRight = currentIdx < STATUS_ORDER.length - 1;
-  const colors = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
   const linkedSubject = task.subject_id ? subjects.find(s => s.id === task.subject_id) : null;
   const subTasks = allTasks.filter(t => t.parent_task_id === task.id);
   const completedSubTasks = subTasks.filter(t => t.status === 'done').length;
@@ -56,14 +54,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
   const deadlineOrScheduled = task.deadline || task.scheduled_date;
   const isOverdue = task.status !== 'done' && deadlineOrScheduled && isBefore(parseISO(deadlineOrScheduled), startOfDay(new Date()));
 
+  // Subject-based border color
+  const borderColor = linkedSubject
+    ? SUBJECT_COLOR_MAP[linkedSubject.color] || 'hsl(var(--border))'
+    : 'hsl(var(--muted-foreground))';
+
   const moveStatus = (direction: -1 | 1) => {
     const newStatus = STATUS_ORDER[currentIdx + direction];
     onUpdateTask({ ...task, status: newStatus });
   };
 
-  const startEdit = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    if ((e.target as HTMLElement).closest('input')) return;
+  const startEdit = () => {
     setEditing(true);
     setEditTitle(task.title);
     setEditDescription(task.description || '');
@@ -102,9 +103,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
     setAddingSubTask(false);
   };
 
+  const toggleSubTaskDone = (st: Task) => {
+    onUpdateTask({ ...st, status: st.status === 'done' ? 'todo' : 'done' });
+  };
+
   if (editing) {
     return (
-      <Card className={`${colors.border} transition-all ring-2 ring-primary/30`}>
+      <Card className="border-l-4 transition-all ring-2 ring-primary/30" style={{ borderLeftColor: borderColor }}>
         <CardContent className="p-3 space-y-2">
           <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="Title" className="h-8 text-sm" autoFocus />
           <Input value={editDescription} onChange={e => setEditDescription(e.target.value)} placeholder="Description" className="h-8 text-sm" />
@@ -112,7 +117,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
             <Select value={editSubjectId} onValueChange={setEditSubjectId}>
               <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No subject</SelectItem>
+                <SelectItem value="none">Untitled</SelectItem>
                 {subjects.map(s => (
                   <SelectItem key={s.id} value={s.id}>
                     <div className="flex items-center gap-2">
@@ -157,132 +162,140 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, subjects = [], allTasks = [],
   }
 
   return (
-    <div className={isSubTask ? 'ml-4 border-l-2 border-muted pl-2' : ''}>
-      <Card
-        className={`group cursor-pointer ${colors.border} ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''} ${isOverdue ? 'ring-1 ring-destructive/40' : ''} transition-all`}
-        onClick={startEdit}
-      >
-        <CardContent className="p-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              {isOverdue && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
-              <p className={`text-sm font-medium leading-tight ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
-                {task.title}
-              </p>
-            </div>
-            <Badge className={`shrink-0 text-[10px] border-0 ${colors.badge}`}>
+    <Card
+      className={`group border-l-4 ${isDragging ? 'opacity-50 rotate-2 shadow-lg' : ''} ${isOverdue ? 'ring-1 ring-destructive/40' : ''} transition-all`}
+      style={{ borderLeftColor: borderColor }}
+    >
+      <CardContent className="p-3 space-y-2">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {isOverdue && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+            <p className={`text-sm font-medium leading-tight ${task.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
+              {task.title}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Badge className={`text-[10px] border-0 ${PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.medium}`}>
               {task.priority}
             </Badge>
           </div>
-          {task.description && (
-            <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
-          )}
-          <div className="flex items-center gap-2 flex-wrap">
-            {linkedSubject && (
-              <div className="flex items-center gap-1 text-xs">
-                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SUBJECT_COLOR_MAP[linkedSubject.color] }} />
-                <span className="text-muted-foreground">{linkedSubject.name}</span>
-              </div>
-            )}
-            {(task.deadline || task.scheduled_date) && (
-              <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                <Clock className="h-3 w-3" />
-                <span>{task.deadline ? `Due ${format(parseISO(task.deadline), 'MMM d')}` : format(parseISO(task.scheduled_date!), 'MMM d')}</span>
-                {isOverdue && <span className="text-[10px]">(overdue)</span>}
-              </div>
-            )}
-            {(task.start_time || task.end_time) && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
-              </div>
-            )}
-            {task.recurrence && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Repeat className="h-3 w-3" />
-                <span>{task.recurrence}</span>
-              </div>
-            )}
-            {(task.estimate_minutes || task.actual_minutes > 0) && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Timer className="h-3 w-3" />
-                <span>{formatMinutes(task.actual_minutes)}{task.estimate_minutes ? ` / ${formatMinutes(task.estimate_minutes)}` : ''}</span>
-              </div>
-            )}
-            {subTasks.length > 0 && !isSubTask && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ListTree className="h-3 w-3" />
-                <span>{completedSubTasks}/{subTasks.length}</span>
-              </div>
-            )}
+        </div>
+
+        {task.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+        )}
+
+        {/* Meta row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 text-xs">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: borderColor }} />
+            <span className="text-muted-foreground">{linkedSubject?.name || 'Untitled'}</span>
           </div>
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex gap-1">
-              {showMoveButtons && (
-                <>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveLeft} onClick={() => moveStatus(-1)} title={canMoveLeft ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx - 1]]}` : undefined}>
-                    <ChevronLeft className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveRight} onClick={() => moveStatus(1)} title={canMoveRight ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx + 1]]}` : undefined}>
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
-                </>
-              )}
-              {!isSubTask && onAddTask && (
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setAddingSubTask(true)} title="Add sub-task">
-                  <Plus className="h-3 w-3" />
-                </Button>
-              )}
-              {subTasks.length > 0 && !isSubTask && (
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setShowSubTasks(!showSubTasks)}>
-                  {showSubTasks ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                </Button>
-              )}
+          {(task.deadline || task.scheduled_date) && (
+            <div className={`flex items-center gap-1 text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+              <Clock className="h-3 w-3" />
+              <span>{task.deadline ? `Due ${format(parseISO(task.deadline), 'MMM d')}` : format(parseISO(task.scheduled_date!), 'MMM d')}</span>
+              {isOverdue && <span className="text-[10px]">(overdue)</span>}
             </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTask(task.id)}>
-              <Trash2 className="h-3 w-3" />
+          )}
+          {(task.start_time || task.end_time) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>{task.start_time || '?'} – {task.end_time || '?'}</span>
+            </div>
+          )}
+          {task.recurrence && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Repeat className="h-3 w-3" />
+              <span>{task.recurrence}</span>
+            </div>
+          )}
+          {(task.estimate_minutes || task.actual_minutes > 0) && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Timer className="h-3 w-3" />
+              <span>{formatMinutes(task.actual_minutes)}{task.estimate_minutes ? ` / ${formatMinutes(task.estimate_minutes)}` : ''}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Sub-tasks inside the card */}
+        {subTasks.length > 0 && (
+          <div className="border-t border-border pt-2 mt-1 space-y-1">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+              <ListTree className="h-3 w-3" />
+              <span>Sub-tasks ({completedSubTasks}/{subTasks.length})</span>
+            </div>
+            {subTasks.map(st => (
+              <div key={st.id} className="flex items-center gap-2 group/sub">
+                <Checkbox
+                  checked={st.status === 'done'}
+                  onCheckedChange={() => toggleSubTaskDone(st)}
+                  className="h-3.5 w-3.5"
+                />
+                <span className={`text-xs flex-1 ${st.status === 'done' ? 'line-through text-muted-foreground' : ''}`}>
+                  {st.title}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 opacity-0 group-hover/sub:opacity-100 text-muted-foreground hover:text-destructive"
+                  onClick={() => onDeleteTask(st.id)}
+                >
+                  <Trash2 className="h-2.5 w-2.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add sub-task inline */}
+        {addingSubTask && (
+          <div className="flex gap-1 pt-1">
+            <Input
+              className="h-7 text-xs flex-1"
+              placeholder="Sub-task title"
+              value={subTaskTitle}
+              onChange={e => setSubTaskTitle(e.target.value)}
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleAddSubTask(); if (e.key === 'Escape') setAddingSubTask(false); }}
+            />
+            <Button size="sm" className="h-7 text-xs px-2" onClick={handleAddSubTask} disabled={!subTaskTitle.trim()}>
+              <Plus className="h-3 w-3" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setAddingSubTask(false)}>
+              <X className="h-3 w-3" />
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Sub-task inline add */}
-      {addingSubTask && !isSubTask && (
-        <div className="ml-4 mt-1 border-l-2 border-muted pl-2 flex gap-1">
-          <Input
-            className="h-7 text-xs flex-1"
-            placeholder="Sub-task title"
-            value={subTaskTitle}
-            onChange={e => setSubTaskTitle(e.target.value)}
-            autoFocus
-            onKeyDown={e => { if (e.key === 'Enter') handleAddSubTask(); if (e.key === 'Escape') setAddingSubTask(false); }}
-          />
-          <Button size="sm" className="h-7 text-xs px-2" onClick={handleAddSubTask} disabled={!subTaskTitle.trim()}>
-            <Plus className="h-3 w-3" />
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setAddingSubTask(false)}>
-            <X className="h-3 w-3" />
+        {/* Action buttons */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex gap-1">
+            {showMoveButtons && (
+              <>
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveLeft} onClick={() => moveStatus(-1)} title={canMoveLeft ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx - 1]]}` : undefined}>
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!canMoveRight} onClick={() => moveStatus(1)} title={canMoveRight ? `Move to ${STATUS_LABELS[STATUS_ORDER[currentIdx + 1]]}` : undefined}>
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+            {onAddTask && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => setAddingSubTask(true)} title="Add sub-task">
+                <Plus className="h-3 w-3" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={startEdit} title="Edit task">
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => onDeleteTask(task.id)}>
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
-      )}
-
-      {/* Sub-tasks list */}
-      {showSubTasks && subTasks.length > 0 && !isSubTask && (
-        <div className="mt-1 space-y-1">
-          {subTasks.map(st => (
-            <TaskCard
-              key={st.id}
-              task={st}
-              subjects={subjects}
-              allTasks={allTasks}
-              onUpdateTask={onUpdateTask}
-              onDeleteTask={onDeleteTask}
-              showMoveButtons={showMoveButtons}
-              isSubTask={true}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
