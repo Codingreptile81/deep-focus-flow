@@ -139,6 +139,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) setHabits(prev => prev.filter(h => h.id !== id));
   }, [user]);
 
+  // Background sync to Google Calendar after task mutations
+  const triggerCalendarSync = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      // Fire-and-forget sync
+      fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-sync`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({}),
+        }
+      ).catch(() => {}); // Silently ignore errors
+    } catch {}
+  }, [user]);
+
   const addTask = useCallback(async (t: { title: string; description?: string; scheduled_date?: string; deadline?: string; start_time?: string; end_time?: string; priority: TaskPriority; recurrence?: TaskRecurrence; subject_id?: string; estimate_minutes?: number; parent_task_id?: string }) => {
     if (!user) return;
     const insertData: any = { title: t.title, user_id: user.id, status: 'todo', position: 0, priority: t.priority };
@@ -155,20 +177,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (data && !error) {
       const r = data as any;
       setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, deadline: r.deadline || undefined, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, parent_task_id: r.parent_task_id || undefined, google_calendar_id: r.google_calendar_id || undefined, created_at: r.created_at }]);
+      triggerCalendarSync();
     }
-  }, [user]);
+  }, [user, triggerCalendarSync]);
 
   const updateTask = useCallback(async (t: Task) => {
     if (!user) return;
     const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, deadline: t.deadline || null, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence, subject_id: t.subject_id || null, estimate_minutes: t.estimate_minutes || null, actual_minutes: t.actual_minutes, parent_task_id: t.parent_task_id || null, google_calendar_id: t.google_calendar_id || null } as any).eq('id', t.id);
-    if (!error) setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
-  }, [user]);
+    if (!error) {
+      setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
+      triggerCalendarSync();
+    }
+  }, [user, triggerCalendarSync]);
 
   const deleteTask = useCallback(async (id: string) => {
     if (!user) return;
     const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (!error) setTasks(prev => prev.filter(t => t.id !== id));
-  }, [user]);
+    if (!error) {
+      setTasks(prev => prev.filter(t => t.id !== id));
+      triggerCalendarSync();
+    }
+  }, [user, triggerCalendarSync]);
 
   return (
     <AppContext.Provider value={{ subjects, habits, sessionLogs, habitLogs, tasks, loading, addSubject, addHabit, updateHabit, addSessionLog, addHabitLog, deleteHabitLog, deleteSubject, deleteHabit, addTask, updateTask, deleteTask }}>
