@@ -24,12 +24,6 @@ export function useGoogleCalendar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data, error } = await supabase.functions.invoke('google-calendar-auth', {
-        body: {},
-        headers: {},
-      });
-
-      // Use the query param approach
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-calendar-auth?action=status`,
         {
