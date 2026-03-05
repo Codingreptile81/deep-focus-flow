@@ -58,7 +58,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHabits((habRes.data as any[])?.map(r => ({ id: r.id, name: r.name, metric_type: r.metric_type, target_value: r.target_value ? Number(r.target_value) : undefined, color: r.color, icon: r.icon, created_at: r.created_at })) || []);
       setSessionLogs((sesRes.data as any[])?.map(r => ({ id: r.id, subject_id: r.subject_id, task_id: r.task_id || undefined, duration_minutes: r.duration_minutes, started_at: r.started_at, completed_at: r.completed_at, date: r.date })) || []);
       setHabitLogs((hlRes.data as any[])?.map(r => ({ id: r.id, habit_id: r.habit_id, value: Number(r.value), date: r.date, note: r.note })) || []);
-      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, deadline: r.deadline || undefined, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, parent_task_id: r.parent_task_id || undefined, created_at: r.created_at })) || []);
+      setTasks((taskRes.data as any[])?.map(r => ({ id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, deadline: r.deadline || undefined, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, parent_task_id: r.parent_task_id || undefined, google_calendar_id: r.google_calendar_id || undefined, created_at: r.created_at })) || []);
       setLoading(false);
     };
     fetchAll();
@@ -154,13 +154,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const { data, error } = await supabase.from('tasks').insert(insertData).select().single();
     if (data && !error) {
       const r = data as any;
-      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, deadline: r.deadline || undefined, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, parent_task_id: r.parent_task_id || undefined, created_at: r.created_at }]);
+      setTasks(prev => [...prev, { id: r.id, title: r.title, description: r.description, status: r.status, scheduled_date: r.scheduled_date, deadline: r.deadline || undefined, start_time: r.start_time, end_time: r.end_time, priority: r.priority, position: r.position, recurrence: r.recurrence, subject_id: r.subject_id || undefined, estimate_minutes: r.estimate_minutes ? Number(r.estimate_minutes) : undefined, actual_minutes: Number(r.actual_minutes) || 0, parent_task_id: r.parent_task_id || undefined, google_calendar_id: r.google_calendar_id || undefined, created_at: r.created_at }]);
     }
   }, [user]);
 
   const updateTask = useCallback(async (t: Task) => {
     if (!user) return;
-    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, deadline: t.deadline || null, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence, subject_id: t.subject_id || null, estimate_minutes: t.estimate_minutes || null, actual_minutes: t.actual_minutes, parent_task_id: t.parent_task_id || null } as any).eq('id', t.id);
+    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, deadline: t.deadline || null, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence, subject_id: t.subject_id || null, estimate_minutes: t.estimate_minutes || null, actual_minutes: t.actual_minutes, parent_task_id: t.parent_task_id || null, google_calendar_id: t.google_calendar_id || null } as any).eq('id', t.id);
     if (!error) setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
   }, [user]);
 

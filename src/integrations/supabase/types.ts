@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      google_calendar_sync: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          sync_enabled: boolean
+          sync_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          sync_enabled?: boolean
+          sync_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          sync_enabled?: boolean
+          sync_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       habit_logs: {
         Row: {
           created_at: string
@@ -251,6 +314,7 @@ export type Database = {
           description: string | null
           end_time: string | null
           estimate_minutes: number | null
+          google_calendar_id: string | null
           id: string
           parent_task_id: string | null
           position: number
@@ -270,6 +334,7 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           estimate_minutes?: number | null
+          google_calendar_id?: string | null
           id?: string
           parent_task_id?: string | null
           position?: number
@@ -289,6 +354,7 @@ export type Database = {
           description?: string | null
           end_time?: string | null
           estimate_minutes?: number | null
+          google_calendar_id?: string | null
           id?: string
           parent_task_id?: string | null
           position?: number

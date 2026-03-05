@@ -20,6 +20,7 @@ export interface Task {
   estimate_minutes?: number;
   actual_minutes: number;
   parent_task_id?: string;
+  google_calendar_id?: string;
   created_at: string;
 }
 export type MetricType = 'binary' | 'count' | 'minutes';
