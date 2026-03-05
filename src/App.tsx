@@ -14,6 +14,7 @@ import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PlannerPage from "./pages/PlannerPage";
 import ProfilePage from "./pages/ProfilePage";
+import GoogleCallbackPage from "./pages/GoogleCallbackPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -42,6 +43,7 @@ const AuthGate: React.FC = () => {
           <Route path="/planner" element={<PlannerPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/google-callback" element={<GoogleCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AppLayout>
@@ -58,6 +60,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/google-callback" element={<AuthGate />} />
             <Route path="/*" element={<AuthGate />} />
           </Routes>
         </BrowserRouter>

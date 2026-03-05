@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppState } from '@/contexts/AppContext';
 import PlannerView from '@/components/PlannerView';
 import KanbanBoard from '@/components/KanbanBoard';
+import GoogleCalendarSync from '@/components/GoogleCalendarSync';
 import { CalendarDays, Columns3 } from 'lucide-react';
 
 const PlannerPage: React.FC = () => {
@@ -10,7 +11,10 @@ const PlannerPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Planner</h1>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold tracking-tight">Planner</h1>
+      </div>
+      <GoogleCalendarSync />
       <Tabs defaultValue="planner">
         <TabsList>
           <TabsTrigger value="planner" className="gap-1.5">
