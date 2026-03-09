@@ -183,9 +183,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateTask = useCallback(async (t: Task) => {
     if (!user) return;
-    const { error } = await supabase.from('tasks').update({ title: t.title, description: t.description, status: t.status, scheduled_date: t.scheduled_date, deadline: t.deadline || null, start_time: t.start_time, end_time: t.end_time, priority: t.priority, position: t.position, recurrence: t.recurrence, subject_id: t.subject_id || null, estimate_minutes: t.estimate_minutes || null, actual_minutes: t.actual_minutes, parent_task_id: t.parent_task_id || null, google_calendar_id: t.google_calendar_id || null } as any).eq('id', t.id);
+    // Auto-set completed_at when moving to done
+    const updatedTask = { ...t };
+    if (t.status === 'done' && !t.completed_at) {
+      updatedTask.completed_at = new Date().toISOString();
+    } else if (t.status !== 'done') {
+      updatedTask.completed_at = undefined;
+    }
+    const { error } = await supabase.from('tasks').update({ title: updatedTask.title, description: updatedTask.description, status: updatedTask.status, scheduled_date: updatedTask.scheduled_date, deadline: updatedTask.deadline || null, start_time: updatedTask.start_time, end_time: updatedTask.end_time, priority: updatedTask.priority, position: updatedTask.position, recurrence: updatedTask.recurrence, subject_id: updatedTask.subject_id || null, estimate_minutes: updatedTask.estimate_minutes || null, actual_minutes: updatedTask.actual_minutes, parent_task_id: updatedTask.parent_task_id || null, google_calendar_id: updatedTask.google_calendar_id || null, completed_at: updatedTask.completed_at || null } as any).eq('id', updatedTask.id);
     if (!error) {
-      setTasks(prev => prev.map(existing => existing.id === t.id ? t : existing));
+      setTasks(prev => prev.map(existing => existing.id === updatedTask.id ? updatedTask : existing));
       triggerCalendarSync();
     }
   }, [user, triggerCalendarSync]);

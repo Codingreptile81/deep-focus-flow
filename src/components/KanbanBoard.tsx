@@ -35,18 +35,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask
         {COLUMNS.map(col => {
           // Only show parent tasks in columns; sub-tasks render inside parent
           // For "done" column, hide tasks completed more than 3 days ago
-          const now = new Date();
-          const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+          const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
           const colTasks = tasks.filter(t => {
             if (t.parent_task_id) return false;
             if (t.status !== col.status) return false;
-            if (col.status === 'done' && t.created_at) {
-              // Use created_at as proxy for completion time (tasks don't have a completed_at field)
-              const taskDate = new Date(t.created_at);
-              // Check if the task was moved to done recently by looking at all tasks
-              // Since we don't track when status changed, we approximate with created_at for older tasks
-              // For a better heuristic, we hide done tasks older than 3 days
-              if (taskDate < threeDaysAgo) return false;
+            if (col.status === 'done' && t.completed_at) {
+              if (new Date(t.completed_at) < threeDaysAgo) return false;
             }
             return true;
           }).sort((a, b) => a.position - b.position);
