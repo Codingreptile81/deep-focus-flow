@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee, Flame, Trophy } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee, Flame, Trophy, Volume2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { ALERT_SOUNDS, getSelectedSound, setSelectedSound, playAlertSound } from '@/lib/alert-sounds';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
 
