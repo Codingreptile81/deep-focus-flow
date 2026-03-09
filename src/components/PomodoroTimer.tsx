@@ -62,6 +62,7 @@ const PomodoroTimer: React.FC = () => {
   const [newSubjectCategory, setNewSubjectCategory] = useState<'study' | 'skill'>('study');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasRestoredRef = useRef(false);
+  const [alertSound, setAlertSound] = useState(getSelectedSound);
 
   // Break state
   const [onBreak, setOnBreak] = useState(false);
