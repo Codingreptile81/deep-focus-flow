@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+
 import { format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { Task, Subject, TaskPriority } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -213,7 +214,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
       start_time: pendingSlot.start,
       end_time: pendingSlot.end,
       priority: newTaskPriority,
-      subject_id: newTaskSubject || undefined,
+      subject_id: newTaskSubject && newTaskSubject !== 'none' ? newTaskSubject : undefined,
     });
     setNewTaskTitle('');
     setNewTaskPriority('medium');
@@ -537,7 +538,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
                     <SelectValue placeholder="Subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {subjects.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
