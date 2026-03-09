@@ -72,6 +72,7 @@ export const useTimerBackground = () => {
         const elapsed = (Date.now() - new Date(saved.startedAt).getTime()) / 1000;
         if (elapsed >= saved.durationMinutes * 60 && saved.focusTarget) {
           localStorage.removeItem(TIMER_STORAGE_KEY);
+          playAlertSound();
           toast({ title: '🎉 Session Complete!', description: `Your ${saved.durationMinutes}-minute focus session has ended.` });
           addSessionLog({
             subject_id: saved.focusTarget.subjectId,

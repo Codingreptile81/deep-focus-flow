@@ -521,6 +521,29 @@ const PomodoroTimer: React.FC = () => {
                 </Button>
               )}
             </div>
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+              <Select value={alertSound} onValueChange={(v) => { setAlertSound(v); setSelectedSound(v); }}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Alert sound" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALERT_SOUNDS.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <span>{s.emoji} {s.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => playAlertSound(alertSound)}
+              >
+                Preview
+              </Button>
+            </div>
           </div>
         )}
 
