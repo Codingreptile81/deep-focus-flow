@@ -3,8 +3,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppState } from '@/contexts/AppContext';
 import PlannerView from '@/components/PlannerView';
 import KanbanBoard from '@/components/KanbanBoard';
+import PlannerCalendar from '@/components/PlannerCalendar';
 import GoogleCalendarSync from '@/components/GoogleCalendarSync';
-import { CalendarDays, Columns3 } from 'lucide-react';
+import { CalendarDays, Columns3, Calendar } from 'lucide-react';
 
 const PlannerPage: React.FC = () => {
   const { tasks, subjects, habits, habitLogs, addTask, updateTask, deleteTask } = useAppState();
@@ -23,12 +24,18 @@ const PlannerPage: React.FC = () => {
           <TabsTrigger value="kanban" className="gap-1.5">
             <Columns3 className="h-4 w-4" /> Kanban
           </TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-1.5">
+            <Calendar className="h-4 w-4" /> Calendar
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="planner">
           <PlannerView tasks={tasks} subjects={subjects} habits={habits} habitLogs={habitLogs} onAddTask={addTask} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
         </TabsContent>
         <TabsContent value="kanban">
           <KanbanBoard tasks={tasks} subjects={subjects} onUpdateTask={updateTask} onDeleteTask={deleteTask} onAddTask={addTask} />
+        </TabsContent>
+        <TabsContent value="calendar" className="min-h-[600px]">
+          <PlannerCalendar tasks={tasks} subjects={subjects} onAddTask={addTask} onUpdateTask={updateTask} onDeleteTask={deleteTask} />
         </TabsContent>
       </Tabs>
     </div>
