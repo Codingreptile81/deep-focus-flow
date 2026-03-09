@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAppState } from '@/contexts/AppContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { playAlertSound } from '@/lib/alert-sounds';
 
 const TIMER_STORAGE_KEY = 'pomodoro_timer_state';
 
