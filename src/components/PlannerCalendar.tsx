@@ -94,6 +94,13 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
   // Resize state
   const [resizingTask, setResizingTask] = useState<Task | null>(null);
   const [resizeEndMinutes, setResizeEndMinutes] = useState<number | null>(null);
+  // Edit state
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editStart, setEditStart] = useState('09:00');
+  const [editEnd, setEditEnd] = useState('10:00');
+  const [editPriority, setEditPriority] = useState<TaskPriority>('medium');
+  const [editSubject, setEditSubject] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
