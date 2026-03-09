@@ -15,8 +15,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Area, AreaChart,
 } from 'recharts';
-import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, Target, Calendar, Flame, ListTodo, Crosshair, AlertTriangle, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
 
 const AnalyticsDashboard: React.FC = () => {
   const { subjects, habits, sessionLogs, habitLogs, tasks } = useAppState();
