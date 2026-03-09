@@ -299,6 +299,58 @@ const AnalyticsDashboard: React.FC = () => {
               )}
             </Card>
           </div>
+
+          {/* Completed Tasks History */}
+          <Card className="p-6">
+            <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" /> Completed Tasks
+            </h3>
+            {(() => {
+              const completedTasks = tasks
+                .filter(t => t.status === 'done' && !t.parent_task_id)
+                .sort((a, b) => {
+                  const dateA = a.completed_at || a.created_at;
+                  const dateB = b.completed_at || b.created_at;
+                  return new Date(dateB).getTime() - new Date(dateA).getTime();
+                });
+
+              if (completedTasks.length === 0) {
+                return <p className="text-sm text-muted-foreground text-center py-8">No completed tasks yet</p>;
+              }
+
+              return (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {completedTasks.map(task => {
+                    const subj = subjects.find(s => s.id === task.subject_id);
+                    const completedDate = task.completed_at || task.created_at;
+                    const subtasks = tasks.filter(t => t.parent_task_id === task.id);
+                    const doneSubtasks = subtasks.filter(t => t.status === 'done').length;
+                    return (
+                      <div key={task.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/50">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                          {subj && (
+                            <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: SUBJECT_COLOR_MAP[subj.color] }} />
+                          )}
+                          <div className="min-w-0">
+                            <span className="text-sm font-medium truncate block">{task.title}</span>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {subj && <span>{subj.name}</span>}
+                              {subtasks.length > 0 && <span>· {doneSubtasks}/{subtasks.length} subtasks</span>}
+                              {task.actual_minutes > 0 && <span>· {formatMinutes(task.actual_minutes)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                          {format(new Date(completedDate), 'MMM d, yyyy')}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </Card>
         </TabsContent>
 
         {/* ═══ HABITS TAB ═══ */}
