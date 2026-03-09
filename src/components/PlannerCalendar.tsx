@@ -538,7 +538,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
                     <SelectValue placeholder="Subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {subjects.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
