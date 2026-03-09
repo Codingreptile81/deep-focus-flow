@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-
 import { format, addDays, startOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { Task, Subject, TaskPriority } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type CalendarViewMode = 'day' | 'week' | 'month';
@@ -20,14 +19,28 @@ interface PlannerCalendarProps {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const HOUR_HEIGHT = 60; // px per hour
-const HEADER_HEIGHT = 48;
+const HOUR_HEIGHT = 60;
+
+// Generate time options in 15-min intervals
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 15) {
+    TIME_OPTIONS.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+  }
+}
 
 function formatHour(hour: number): string {
   if (hour === 0) return '12AM';
   if (hour < 12) return `${hour}AM`;
   if (hour === 12) return '12PM';
   return `${hour - 12}PM`;
+}
+
+function formatTimeLabel(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
 }
 
 function timeToMinutes(time: string): number {
@@ -78,10 +91,12 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
   const [newTaskSubject, setNewTaskSubject] = useState<string>('');
   const [pendingSlot, setPendingSlot] = useState<{ date: string; start: string; end: string } | null>(null);
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
+  // Resize state
+  const [resizingTask, setResizingTask] = useState<Task | null>(null);
+  const [resizeEndMinutes, setResizeEndMinutes] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  // Scroll to current time on mount
   useEffect(() => {
     if (scrollRef.current) {
       const now = new Date();
@@ -106,7 +121,6 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
       const start = startOfWeek(currentDate, { weekStartsOn: 0 });
       return Array.from({ length: 7 }, (_, i) => addDays(start, i));
     }
-    // month
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
     return eachDayOfInterval({ start, end });
@@ -131,9 +145,9 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     return tasks.filter(t => t.scheduled_date === dateStr && (!t.start_time || !t.end_time));
   }, [tasks]);
 
-  // Mouse handlers for drag-to-create on time grid
+  // Mouse handlers for drag-to-create
   const handleMouseDown = useCallback((date: string, e: React.MouseEvent<HTMLDivElement>) => {
-    if (draggingTask) return;
+    if (draggingTask || resizingTask) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const minutes = Math.floor(y / HOUR_HEIGHT * 60 / 15) * 15;
@@ -141,17 +155,49 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     setDragEnd(minutes + 15);
     setDragDate(date);
     isDragging.current = true;
-  }, [draggingTask]);
+  }, [draggingTask, resizingTask]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Handle resize
+    if (resizingTask) {
+      const columns = e.currentTarget.querySelectorAll('[data-day-column]');
+      // Find the column for the resizing task
+      const dateStr = resizingTask.scheduled_date;
+      let rect: DOMRect | null = null;
+      columns.forEach(col => {
+        if (col.getAttribute('data-day-column') === dateStr) {
+          rect = col.getBoundingClientRect();
+        }
+      });
+      if (!rect) {
+        // fallback: use the grid container
+        rect = e.currentTarget.getBoundingClientRect();
+      }
+      const y = e.clientY - (rect as DOMRect).top;
+      const minutes = Math.max(0, Math.min(24 * 60, Math.floor(y / HOUR_HEIGHT * 60 / 15) * 15));
+      const startMin = timeToMinutes(resizingTask.start_time!);
+      setResizeEndMinutes(Math.max(startMin + 15, minutes));
+      return;
+    }
     if (!isDragging.current || !dragStart) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const minutes = Math.max(0, Math.min(24 * 60, Math.floor(y / HOUR_HEIGHT * 60 / 15) * 15));
     setDragEnd(minutes);
-  }, [dragStart]);
+  }, [dragStart, resizingTask]);
 
   const handleMouseUp = useCallback(() => {
+    // Handle resize end
+    if (resizingTask && resizeEndMinutes !== null) {
+      onUpdateTask({
+        ...resizingTask,
+        end_time: minutesToTime(resizeEndMinutes),
+      });
+      setResizingTask(null);
+      setResizeEndMinutes(null);
+      return;
+    }
+
     if (!isDragging.current || !dragStart || dragEnd === null) {
       isDragging.current = false;
       return;
@@ -174,7 +220,15 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     setDragStart(null);
     setDragEnd(null);
     setDragDate(null);
-  }, [dragStart, dragEnd]);
+  }, [dragStart, dragEnd, resizingTask, resizeEndMinutes, onUpdateTask]);
+
+  // Resize start handler
+  const handleResizeStart = useCallback((e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizingTask(task);
+    setResizeEndMinutes(timeToMinutes(task.end_time!));
+  }, []);
 
   // Task drag to move
   const handleTaskDragStart = useCallback((e: React.DragEvent, task: Task) => {
@@ -188,11 +242,9 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const dropMinutes = Math.floor(y / HOUR_HEIGHT * 60 / 15) * 15;
-    
     const duration = draggingTask.start_time && draggingTask.end_time
       ? timeToMinutes(draggingTask.end_time) - timeToMinutes(draggingTask.start_time)
       : 60;
-    
     onUpdateTask({
       ...draggingTask,
       scheduled_date: date,
@@ -232,8 +284,23 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
 
   const currentTimeTop = (now.getHours() * 60 + now.getMinutes()) / 60 * HOUR_HEIGHT;
 
-  // Render time grid column for a single day
-  const renderDayColumn = (date: Date, colWidth?: string) => {
+  // Global mouseup listener for resize
+  useEffect(() => {
+    const onUp = () => {
+      if (resizingTask && resizeEndMinutes !== null) {
+        onUpdateTask({
+          ...resizingTask,
+          end_time: minutesToTime(resizeEndMinutes),
+        });
+        setResizingTask(null);
+        setResizeEndMinutes(null);
+      }
+    };
+    window.addEventListener('mouseup', onUp);
+    return () => window.removeEventListener('mouseup', onUp);
+  }, [resizingTask, resizeEndMinutes, onUpdateTask]);
+
+  const renderDayColumn = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayTasks = getTasksForDay(date);
     const isCurrentDay = isToday(date);
@@ -241,36 +308,20 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     return (
       <div
         key={dateStr}
-        className={cn(
-          "relative border-l border-border flex-1 min-w-0",
-          colWidth
-        )}
+        data-day-column={dateStr}
+        className="relative border-l border-border flex-1 min-w-0"
         onMouseDown={(e) => handleMouseDown(dateStr, e)}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
         onDragOver={handleDragOver}
         onDrop={(e) => handleDayDrop(dateStr, e)}
         style={{ height: 24 * HOUR_HEIGHT }}
       >
-        {/* Hour grid lines */}
         {HOURS.map(h => (
-          <div
-            key={h}
-            className="absolute w-full border-t border-border/50"
-            style={{ top: h * HOUR_HEIGHT }}
-          />
+          <div key={h} className="absolute w-full border-t border-border/50" style={{ top: h * HOUR_HEIGHT }} />
+        ))}
+        {HOURS.map(h => (
+          <div key={`half-${h}`} className="absolute w-full border-t border-border/20" style={{ top: h * HOUR_HEIGHT + HOUR_HEIGHT / 2 }} />
         ))}
 
-        {/* Half-hour lines */}
-        {HOURS.map(h => (
-          <div
-            key={`half-${h}`}
-            className="absolute w-full border-t border-border/20"
-            style={{ top: h * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
-          />
-        ))}
-
-        {/* Current time indicator */}
         {isCurrentDay && (
           <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: currentTimeTop }}>
             <div className="flex items-center">
@@ -280,7 +331,6 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
           </div>
         )}
 
-        {/* Drag preview */}
         {isDragging.current && dragStart && dragDate === dateStr && dragEnd !== null && (
           <div
             className="absolute left-1 right-1 rounded-md bg-primary/20 border border-primary/40 z-20 pointer-events-none"
@@ -291,10 +341,10 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
           />
         )}
 
-        {/* Tasks */}
         {dayTasks.map(task => {
           const startMin = timeToMinutes(task.start_time!);
-          const endMin = timeToMinutes(task.end_time!);
+          const isResizing = resizingTask?.id === task.id;
+          const endMin = isResizing && resizeEndMinutes !== null ? resizeEndMinutes : timeToMinutes(task.end_time!);
           const top = startMin / 60 * HOUR_HEIGHT;
           const height = Math.max((endMin - startMin) / 60 * HOUR_HEIGHT, 20);
           const color = getTaskColor(task, subjects);
@@ -302,24 +352,31 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
           return (
             <div
               key={task.id}
-              draggable
+              draggable={!isResizing}
               onDragStart={(e) => handleTaskDragStart(e, task)}
-              className="absolute left-1 right-1 rounded-md px-2 py-1 text-xs cursor-grab active:cursor-grabbing z-10 overflow-hidden select-none"
+              className="absolute left-1 right-1 rounded-md px-2 py-1 text-xs z-10 overflow-hidden select-none group"
               style={{
                 top,
                 height,
                 backgroundColor: color,
                 color: '#fff',
                 opacity: task.status === 'done' ? 0.5 : 1,
+                cursor: isResizing ? 'ns-resize' : 'grab',
               }}
               title={`${task.title}\n${task.start_time} – ${task.end_time}`}
             >
               <div className="font-medium truncate">{task.title}</div>
               {height > 30 && (
                 <div className="opacity-75 text-[10px]">
-                  {task.start_time} – {task.end_time}
+                  {task.start_time} – {isResizing && resizeEndMinutes !== null ? minutesToTime(resizeEndMinutes) : task.end_time}
                 </div>
               )}
+              {/* Resize handle */}
+              <div
+                className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.3))' }}
+                onMouseDown={(e) => handleResizeStart(e, task)}
+              />
             </div>
           );
         })}
@@ -327,7 +384,6 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
     );
   };
 
-  // Month view
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -344,7 +400,6 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
 
     return (
       <div className="border border-border rounded-lg overflow-hidden">
-        {/* Day headers */}
         <div className="grid grid-cols-7 border-b border-border bg-muted/30">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div key={d} className="px-2 py-2 text-xs font-medium text-muted-foreground text-center">{d}</div>
@@ -363,10 +418,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
                     "min-h-[100px] p-1 border-l border-border first:border-l-0 cursor-pointer hover:bg-accent/30 transition-colors",
                     !inMonth && "opacity-40"
                   )}
-                  onClick={() => {
-                    setCurrentDate(day);
-                    setViewMode('day');
-                  }}
+                  onClick={() => { setCurrentDate(day); setViewMode('day'); }}
                 >
                   <div className={cn(
                     "text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1",
@@ -376,11 +428,8 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
                   </div>
                   <div className="space-y-0.5">
                     {dayTasks.slice(0, 3).map(t => (
-                      <div
-                        key={t.id}
-                        className="text-[10px] leading-tight px-1 py-0.5 rounded truncate text-white"
-                        style={{ backgroundColor: getTaskColor(t, subjects) }}
-                      >
+                      <div key={t.id} className="text-[10px] leading-tight px-1 py-0.5 rounded truncate text-white"
+                        style={{ backgroundColor: getTaskColor(t, subjects) }}>
                         {t.title}
                       </div>
                     ))}
@@ -429,22 +478,14 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
         </div>
       </div>
 
-      {/* Month view */}
       {viewMode === 'month' && renderMonthView()}
 
-      {/* Day/Week view */}
       {(viewMode === 'day' || viewMode === 'week') && (
         <div className="flex-1 border border-border rounded-lg overflow-hidden flex flex-col">
-          {/* Day headers */}
           <div className="flex border-b border-border bg-muted/30 shrink-0">
             <div className="w-16 shrink-0" />
             {visibleDays.map(day => (
-              <div
-                key={format(day, 'yyyy-MM-dd')}
-                className={cn(
-                  "flex-1 text-center py-2 border-l border-border min-w-0",
-                )}
-              >
+              <div key={format(day, 'yyyy-MM-dd')} className="flex-1 text-center py-2 border-l border-border min-w-0">
                 <div className="text-xs text-muted-foreground">{format(day, 'EEE')}</div>
                 <div className={cn(
                   "text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full mx-auto",
@@ -456,7 +497,6 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
             ))}
           </div>
 
-          {/* All-day tasks row */}
           <div className="flex border-b border-border shrink-0">
             <div className="w-16 shrink-0 text-[10px] text-muted-foreground px-2 py-1">All-day</div>
             {visibleDays.map(day => {
@@ -475,22 +515,21 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
             })}
           </div>
 
-          {/* Time grid */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto relative">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto relative"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+          >
             <div className="flex" style={{ height: 24 * HOUR_HEIGHT }}>
-              {/* Time labels */}
               <div className="w-16 shrink-0 relative">
                 {HOURS.map(h => (
-                  <div
-                    key={h}
-                    className="absolute w-full text-right pr-2 text-xs text-muted-foreground -translate-y-1/2"
-                    style={{ top: h * HOUR_HEIGHT }}
-                  >
+                  <div key={h} className="absolute w-full text-right pr-2 text-xs text-muted-foreground -translate-y-1/2"
+                    style={{ top: h * HOUR_HEIGHT }}>
                     {h > 0 ? formatHour(h) : ''}
                   </div>
                 ))}
               </div>
-              {/* Day columns */}
               {visibleDays.map(day => renderDayColumn(day))}
             </div>
           </div>
@@ -499,10 +538,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
 
       {/* Create task dialog */}
       <Dialog open={showTaskDialog} onOpenChange={(open) => {
-        if (!open) {
-          setShowTaskDialog(false);
-          setPendingSlot(null);
-        }
+        if (!open) { setShowTaskDialog(false); setPendingSlot(null); }
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -510,7 +546,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
           </DialogHeader>
           {pendingSlot && (
             <div className="text-sm text-muted-foreground mb-2">
-              {format(new Date(pendingSlot.date + 'T00:00:00'), 'EEEE, MMMM d')} · {pendingSlot.start} – {pendingSlot.end}
+              {format(new Date(pendingSlot.date + 'T00:00:00'), 'EEEE, MMMM d')} · {formatTimeLabel(pendingSlot.start)} – {formatTimeLabel(pendingSlot.end)}
             </div>
           )}
           <div className="space-y-3">
@@ -521,11 +557,40 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
               onKeyDown={e => e.key === 'Enter' && handleCreateTask()}
               autoFocus
             />
+            {/* Start / End time dropdowns */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Start</label>
+                <Select
+                  value={pendingSlot?.start || '09:00'}
+                  onValueChange={v => setPendingSlot(prev => prev ? { ...prev, start: v } : null)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {TIME_OPTIONS.map(t => (
+                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">End</label>
+                <Select
+                  value={pendingSlot?.end || '10:00'}
+                  onValueChange={v => setPendingSlot(prev => prev ? { ...prev, end: v } : null)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {TIME_OPTIONS.map(t => (
+                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Select value={newTaskPriority} onValueChange={v => setNewTaskPriority(v as TaskPriority)}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -534,9 +599,7 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
               </Select>
               {subjects.length > 0 && (
                 <Select value={newTaskSubject} onValueChange={setNewTaskSubject}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Subject" />
-                  </SelectTrigger>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Subject" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {subjects.map(s => (
