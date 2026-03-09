@@ -530,7 +530,7 @@ const PomodoroTimer: React.FC = () => {
                 <SelectContent>
                   {ALERT_SOUNDS.map(s => (
                     <SelectItem key={s.id} value={s.id}>
-                      <span>{s.emoji} {s.name}</span>
+                      <span>{s.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
