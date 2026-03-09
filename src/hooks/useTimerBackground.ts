@@ -52,6 +52,7 @@ export const useTimerBackground = () => {
           if (studyRemaining <= 0 && saved.focusTarget) {
             // Both break and study completed
             localStorage.removeItem(TIMER_STORAGE_KEY);
+            playAlertSound();
             toast({ title: '🎉 Session Complete!', description: `Your ${saved.durationMinutes}-minute focus session has ended.` });
             addSessionLog({
               subject_id: saved.focusTarget.subjectId,
