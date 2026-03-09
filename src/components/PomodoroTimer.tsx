@@ -194,6 +194,7 @@ const PomodoroTimer: React.FC = () => {
   const completeSession = useCallback(() => {
     if (!focusTarget || !startedAt) return;
     clearTimerState();
+    playAlertSound();
     toast({ title: '🎉 Session Complete!', description: `Your ${durationMinutes}-minute focus session has ended.` });
     sendNotification('Session Complete!', `Your ${durationMinutes}-minute focus session has ended.`);
     addSessionLog({
