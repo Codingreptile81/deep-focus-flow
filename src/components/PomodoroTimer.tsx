@@ -221,6 +221,7 @@ const PomodoroTimer: React.FC = () => {
         setOnBreak(false);
         setBreakStartedAt(null);
         setBreakSecondsLeft(0);
+        playAlertSound();
         toast({ title: '☕ Break over!', description: 'Your study session has resumed automatically.' });
         sendNotification('Break over!', 'Your study session has resumed.');
         // Auto-resume
