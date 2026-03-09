@@ -630,6 +630,110 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+      {/* Edit task dialog */}
+      <Dialog open={!!editingTask} onOpenChange={(open) => { if (!open) setEditingTask(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          {editingTask && (
+            <div className="space-y-3">
+              <Input
+                placeholder="Task title"
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && editTitle.trim()) {
+                    onUpdateTask({
+                      ...editingTask,
+                      title: editTitle.trim(),
+                      start_time: editStart,
+                      end_time: editEnd,
+                      priority: editPriority,
+                      subject_id: editSubject && editSubject !== 'none' ? editSubject : undefined,
+                    });
+                    setEditingTask(null);
+                  }
+                }}
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">Start</label>
+                  <Select value={editStart} onValueChange={setEditStart}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-48">
+                      {TIME_OPTIONS.map(t => (
+                        <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground mb-1 block">End</label>
+                  <Select value={editEnd} onValueChange={setEditEnd}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="max-h-48">
+                      {TIME_OPTIONS.map(t => (
+                        <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Select value={editPriority} onValueChange={v => setEditPriority(v as TaskPriority)}>
+                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+                {subjects.length > 0 && (
+                  <Select value={editSubject} onValueChange={setEditSubject}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Subject" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {subjects.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={!editTitle.trim()}
+                  onClick={() => {
+                    onUpdateTask({
+                      ...editingTask,
+                      title: editTitle.trim(),
+                      start_time: editStart,
+                      end_time: editEnd,
+                      priority: editPriority,
+                      subject_id: editSubject && editSubject !== 'none' ? editSubject : undefined,
+                    });
+                    setEditingTask(null);
+                  }}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    onDeleteTask(editingTask.id);
+                    setEditingTask(null);
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
