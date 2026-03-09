@@ -361,14 +361,22 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({
               key={task.id}
               draggable={!isResizing}
               onDragStart={(e) => handleTaskDragStart(e, task)}
-              className="absolute left-1 right-1 rounded-md px-2 py-1 text-xs z-10 overflow-hidden select-none group"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingTask(task);
+                setEditTitle(task.title);
+                setEditStart(task.start_time || '09:00');
+                setEditEnd(task.end_time || '10:00');
+                setEditPriority(task.priority as TaskPriority);
+                setEditSubject(task.subject_id || 'none');
+              }}
+              className="absolute left-1 right-1 rounded-md px-2 py-1 text-xs z-10 overflow-hidden select-none group cursor-pointer hover:ring-2 hover:ring-white/40 transition-shadow"
               style={{
                 top,
                 height,
                 backgroundColor: color,
                 color: '#fff',
                 opacity: task.status === 'done' ? 0.5 : 1,
-                cursor: isResizing ? 'ns-resize' : 'grab',
               }}
               title={`${task.title}\n${task.start_time} – ${task.end_time}`}
             >
