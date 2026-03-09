@@ -309,6 +309,7 @@ export type Database = {
       tasks: {
         Row: {
           actual_minutes: number
+          completed_at: string | null
           created_at: string
           deadline: string | null
           description: string | null
@@ -329,6 +330,7 @@ export type Database = {
         }
         Insert: {
           actual_minutes?: number
+          completed_at?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null
@@ -349,6 +351,7 @@ export type Database = {
         }
         Update: {
           actual_minutes?: number
+          completed_at?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null

@@ -34,7 +34,16 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, subjects, onUpdateTask
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map(col => {
           // Only show parent tasks in columns; sub-tasks render inside parent
-          const colTasks = tasks.filter(t => t.status === col.status && !t.parent_task_id).sort((a, b) => a.position - b.position);
+          // For "done" column, hide tasks completed more than 3 days ago
+          const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+          const colTasks = tasks.filter(t => {
+            if (t.parent_task_id) return false;
+            if (t.status !== col.status) return false;
+            if (col.status === 'done' && t.completed_at) {
+              if (new Date(t.completed_at) < threeDaysAgo) return false;
+            }
+            return true;
+          }).sort((a, b) => a.position - b.position);
           return (
             <div key={col.status} className="space-y-3">
               <div className="flex items-center justify-between">

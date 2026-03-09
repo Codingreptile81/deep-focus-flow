@@ -21,6 +21,7 @@ export interface Task {
   actual_minutes: number;
   parent_task_id?: string;
   google_calendar_id?: string;
+  completed_at?: string;
   created_at: string;
 }
 export type MetricType = 'binary' | 'count' | 'minutes';
