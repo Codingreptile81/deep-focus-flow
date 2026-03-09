@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee, Flame, Trophy } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Clock, Zap, BookOpen, ListTodo, Columns3, Bell, Coffee, Flame, Trophy, Volume2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { ALERT_SOUNDS, getSelectedSound, setSelectedSound, playAlertSound } from '@/lib/alert-sounds';
 
 type FocusTarget = { type: 'subject'; subjectId: string } | { type: 'task'; taskId: string; subjectId: string };
 
@@ -61,6 +62,7 @@ const PomodoroTimer: React.FC = () => {
   const [newSubjectCategory, setNewSubjectCategory] = useState<'study' | 'skill'>('study');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasRestoredRef = useRef(false);
+  const [alertSound, setAlertSound] = useState(getSelectedSound);
 
   // Break state
   const [onBreak, setOnBreak] = useState(false);
@@ -192,6 +194,7 @@ const PomodoroTimer: React.FC = () => {
   const completeSession = useCallback(() => {
     if (!focusTarget || !startedAt) return;
     clearTimerState();
+    playAlertSound();
     toast({ title: '🎉 Session Complete!', description: `Your ${durationMinutes}-minute focus session has ended.` });
     sendNotification('Session Complete!', `Your ${durationMinutes}-minute focus session has ended.`);
     addSessionLog({
@@ -218,6 +221,7 @@ const PomodoroTimer: React.FC = () => {
         setOnBreak(false);
         setBreakStartedAt(null);
         setBreakSecondsLeft(0);
+        playAlertSound();
         toast({ title: '☕ Break over!', description: 'Your study session has resumed automatically.' });
         sendNotification('Break over!', 'Your study session has resumed.');
         // Auto-resume
@@ -516,6 +520,29 @@ const PomodoroTimer: React.FC = () => {
                   <Bell className="h-3.5 w-3.5" /> Enable alerts
                 </Button>
               )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+              <Select value={alertSound} onValueChange={(v) => { setAlertSound(v); setSelectedSound(v); }}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Alert sound" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALERT_SOUNDS.map(s => (
+                    <SelectItem key={s.id} value={s.id}>
+                      <span>{s.emoji} {s.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => playAlertSound(alertSound)}
+              >
+                Preview
+              </Button>
             </div>
           </div>
         )}
